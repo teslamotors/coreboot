@@ -77,9 +77,15 @@ void arm_tf_run_bl31(u64 payload_entry, u64 payload_arg0, u64 payload_spsr)
 	bl31_params.bl33_ep_info = &bl33_ep_info;
 
 	SET_PARAM_HEAD(&bl33_ep_info, PARAM_EP, VERSION_1, PARAM_EP_NON_SECURE);
-	bl33_ep_info.pc = payload_entry;
-	bl33_ep_info.spsr = payload_spsr;
-	bl33_ep_info.args.arg0 = payload_arg0;
+	if (!IS_ENABLED(CONFIG_JUMP_TO_KERNEL)) {
+		bl33_ep_info.pc = payload_entry;
+		bl33_ep_info.spsr = payload_spsr;
+		bl33_ep_info.args.arg0 = payload_arg0;
+	} else {
+		bl33_ep_info.pc = CONFIG_KERNEL_LOAD_ADDRESS;
+		bl33_ep_info.spsr = payload_spsr;
+		bl33_ep_info.args.arg0 = CONFIG_KERNEL_DTB_ADDRESS;
+	}
 
 	/* May update bl31_params if necessary. Must flush all added structs. */
 	void *bl31_plat_params = soc_get_bl31_plat_params(&bl31_params);

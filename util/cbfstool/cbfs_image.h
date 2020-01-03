@@ -189,9 +189,11 @@ struct cbfs_file_attribute *cbfs_add_file_attr(struct cbfs_file *header,
 					       uint32_t tag,
 					       uint32_t size);
 
+#if VBOOT_SUPPORT
 /* Adds an extended attribute to header, containing a hash of buffer's data of
  * the type specified by hash_type.
  * Returns 0 on success, -1 on error. */
 int cbfs_add_file_hash(struct cbfs_file *header, struct buffer *buffer,
 	enum vb2_hash_algorithm hash_type);
+#endif
 #endif

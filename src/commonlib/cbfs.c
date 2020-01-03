@@ -232,6 +232,7 @@ int cbfs_locate(struct cbfsf *fh, const struct region_device *cbfs,
 	return -1;
 }
 
+#if VBOOT_SUPPORT
 static int cbfs_extend_hash_buffer(struct vb2_digest_context *ctx,
 					void *buf, size_t sz)
 {
@@ -370,3 +371,4 @@ int cbfs_vb2_hash_contents(const struct region_device *cbfs,
 
 	return vb2_digest_finalize(&ctx, digest, digest_sz);
 }
+#endif

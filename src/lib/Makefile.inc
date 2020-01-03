@@ -210,10 +210,11 @@ $(call src-to-obj,smm,$(dir)/fmap.c) : $(obj)/fmap_config.h
 $(call src-to-obj,verstage,$(dir)/fmap.c) : $(obj)/fmap_config.h
 $(call src-to-obj,postcar,$(dir)/fmap.c) : $(obj)/fmap_config.h
 
-bootblock-y += bootmode.c
-romstage-y += bootmode.c
-ramstage-y += bootmode.c
-verstage-y += bootmode.c
+# DISABLED VBOOT_SUPPORT is 0
+#bootblock-y += bootmode.c
+#romstage-y += bootmode.c
+#ramstage-y += bootmode.c
+#verstage-y += bootmode.c
 
 bootblock-y += halt.c
 romstage-y += halt.c

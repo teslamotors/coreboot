@@ -29,10 +29,12 @@ cbfsobj += fsp_relocate.o
 cbfsobj += mem_pool.o
 cbfsobj += region.o
 # CRYPTOLIB
-cbfsobj += 2sha_utility.o
-cbfsobj += 2sha1.o
-cbfsobj += 2sha256.o
-cbfsobj += 2sha512.o
+# disabled VBOOT_SUPPORT is 0
+#cbfsobj += 2sha_utility.o
+#cbfsobj += 2sha1.o
+#cbfsobj += 2sha256.o
+#cbfsobj += 2sha512.o
+
 # FMAP
 cbfsobj += fmap.o
 cbfsobj += kv_pair.o

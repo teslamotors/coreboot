@@ -42,7 +42,8 @@ ENTRY(arm64_init_cpu)
 	isb
 
 	/* Flush and invalidate dcache */
-	mov	x0, #DCCISW
+	mov	x0, #DCISW
+
 	bl	flush_dcache_all
 
 	/* Deactivate MMU (0), Alignment Check (1) and DCache (2) */

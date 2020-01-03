@@ -1,0 +1,2 @@
+config BOARD_TURBO_SENTINEL
+	bool "Sentinel"

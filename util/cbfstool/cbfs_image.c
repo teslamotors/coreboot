@@ -77,6 +77,7 @@ int cbfs_parse_comp_algo(const char *name)
 	return lookup_type_by_name(types_cbfs_compression, name);
 }
 
+#if VBOOT_SUPPORT
 static const char *get_hash_attr_name(uint16_t hash_type)
 {
 	return lookup_name_by_type(types_cbfs_hash, hash_type, "(invalid)");
@@ -86,6 +87,7 @@ int cbfs_parse_hash_algo(const char *name)
 {
 	return lookup_type_by_name(types_cbfs_hash, name);
 }
+#endif
 
 /* CBFS image */
 
@@ -183,6 +185,7 @@ static int cbfs_file_get_compression_info(struct cbfs_file *entry,
 	return compression;
 }
 
+#if VBOOT_SUPPORT
 static struct cbfs_file_attr_hash *cbfs_file_get_next_hash(
 	struct cbfs_file *entry, struct cbfs_file_attr_hash *cur)
 {
@@ -200,6 +203,7 @@ static struct cbfs_file_attr_hash *cbfs_file_get_next_hash(
 	};
 	return NULL;
 }
+#endif
 
 void cbfs_get_header(struct cbfs_header *header, void *src)
 {
@@ -757,6 +761,9 @@ struct cbfs_file *cbfs_get_entry(struct cbfs_image *image, const char *name)
 	return NULL;
 }
 
+#define RAW_OUTPUT_ONLY 1
+
+#if RAW_OUTPUT_ONLY == 0
 static int cbfs_stage_decompress(struct cbfs_stage *stage, struct buffer *buff)
 {
 	struct buffer reader;
@@ -1205,6 +1212,7 @@ out:
 	elf_writer_destroy(ew);
 	return retval;
 }
+#endif
 
 int cbfs_export_entry(struct cbfs_image *image, const char *entry_name,
 		      const char *filename, uint32_t arch)
@@ -1241,6 +1249,7 @@ int cbfs_export_entry(struct cbfs_image *image, const char *entry_name,
 		return -1;
 	}
 
+#if RAW_OUTPUT_ONLY == 0
 	/*
 	 * The stage metadata is never compressed proper for cbfs_stage
 	 * files. The contents of the stage data can be though. Therefore
@@ -1258,14 +1267,28 @@ int cbfs_export_entry(struct cbfs_image *image, const char *entry_name,
 			return -1;
 		}
 	}
-
+#else
+	if ((int) arch != -1)
+		LOG("arch %d is ignored\n", arch);
+	/* skip first 28 bytes */
+	buffer.data += 28;
+	buffer.size -= 28;
+#endif
 	if (buffer_write_file(&buffer, filename) != 0) {
 		ERROR("Failed to write %s into %s.\n",
 		      entry_name, filename);
+#if RAW_OUTPUT_ONLY == 1
+		buffer.data -= 28;
+		buffer.size += 28;
+#endif
 		buffer_delete(&buffer);
 		return -1;
 	}
 
+#if RAW_OUTPUT_ONLY == 1
+	buffer.data -= 28;
+	buffer.size += 28;
+#endif
 	buffer_delete(&buffer);
 	INFO("Successfully dumped the file to: %s\n", filename);
 	return 0;
@@ -1403,6 +1426,7 @@ int cbfs_print_entry_info(struct cbfs_image *image, struct cbfs_file *entry,
 			);
 	}
 
+#if VBOOT_SUPPORT
 	struct cbfs_file_attr_hash *hash = NULL;
 	while ((hash = cbfs_file_get_next_hash(entry, hash)) != NULL) {
 		unsigned int hash_type = ntohl(hash->hash_type);
@@ -1428,6 +1452,7 @@ int cbfs_print_entry_info(struct cbfs_image *image, struct cbfs_file *entry,
 			hash_str, valid_str);
 		free(hash_str);
 	}
+#endif
 
 	if (!verbose)
 		return 0;
@@ -1809,6 +1834,7 @@ struct cbfs_file_attribute *cbfs_add_file_attr(struct cbfs_file *header,
 	return attr;
 }
 
+#if VBOOT_SUPPORT
 int cbfs_add_file_hash(struct cbfs_file *header, struct buffer *buffer,
 	enum vb2_hash_algorithm hash_type)
 {
@@ -1836,6 +1862,7 @@ int cbfs_add_file_hash(struct cbfs_file *header, struct buffer *buffer,
 
 	return 0;
 }
+#endif
 
 /* Finds a place to hold whole data in same memory page. */
 static int is_in_same_page(uint32_t start, uint32_t size, uint32_t page)

@@ -152,6 +152,9 @@ ENTRY(exc_exit)
 	ldp	 x25, x26, [sp], #STACK_POP_BYTES
 	ldp	 x27, x28, [sp], #STACK_POP_BYTES
 	ldp	 x29, x30, [sp], #STACK_POP_BYTES
+#if IS_ENABLED(CONFIG_JUMP_TO_KERNEL)
+	ldr	x0, =CONFIG_KERNEL_DTB_ADDRESS
+#endif
 	eret
 ENDPROC(exc_exit)
 

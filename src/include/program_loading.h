@@ -190,6 +190,9 @@ void payload_run(void);
 /* Mirror the payload to be loaded. */
 void mirror_payload(struct prog *payload);
 
+void update_dtb(unsigned char *load, int size);
+int use_dtb2(void);
+
 /*
  * Set check_regions to true to check that the payload targets usable memory.
  * With this flag set, if it does not, the load will fail and this function

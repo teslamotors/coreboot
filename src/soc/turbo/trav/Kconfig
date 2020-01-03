@@ -1,0 +1,394 @@
+##
+## This file is part of the coreboot project.
+##
+## Copyright 2017 Samsung Electronics
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; version 2 of the License.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program; if not, write to the Free Software
+## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+##
+
+config SOC_TURBO_TRAV
+	select HAVE_MONOTONIC_TIMER
+	select HAVE_UART_SPECIAL
+	select RELOCATABLE_MODULES
+	select EARLY_CONSOLE
+	select ARCH_BOOTBLOCK_ARMV8_64
+	select ARCH_RAMSTAGE_ARMV8_64
+	select ARCH_VERSTAGE_ARMV8_64
+	select GENERIC_UDELAY
+	select BOOTBLOCK_CONSOLE
+	select BOOTBLOCK_CUSTOM
+	select UNCOMPRESSED_RAMSTAGE
+	select ARM64_USE_ARM_TRUSTED_FIRMWARE
+	bool
+	default n
+
+if SOC_TURBO_TRAV
+config BOOTBLOCK_X
+	bool "bootblock-x"
+	help
+	  bootblock-x is from 0x0, and it will load bootblock -r -a -b.
+
+config BOOTBLOCK_X_START
+	hex
+	default 0x0
+	help
+	  bootblock-x start from 0x0
+
+config BOOTBLOCK_X_SIZE
+	hex
+	default 0x8000
+	help
+	  bootblock-x size is 0x8000
+
+config BOOTBLOCK_START
+	hex "BOOTBLOCK_START"
+	default 0x8000
+	help
+	  without using -x, should start from 0x0
+	  otherwise bootblock-r -a -b start from 0x8000
+
+config BOOTBLOCK_SIZE
+	hex
+	default 0x20000
+	help
+	  bootblock-r -a -b size is 0x20000
+
+config USE_TRAV_EMUL
+	bool "TRAV Emulator"
+	help
+	  This enables specific changes for
+          TRAV emulator setup.
+	default n
+
+config JUMP_TO_KERNEL
+	bool "Jump to kernel [EMUL ONLY]"
+	help
+	  [HACK] This enables coreboot to skip U-boot and
+          jump to kernel directly.
+          Only valid for emulator
+
+config JUMP_TO_EXCITE
+	bool "Jump to Excite"
+	help
+	  [HACK] This enables coreboot to skip U-boot and
+          jump to excite directly.
+
+config KERNEL_LOAD_ADDRESS
+	hex "Kernel load address in DRAM"
+	default 0x80080000
+
+config KERNEL_DTB_ADDRESS
+	hex "Kernel DTB load address in DRAM"
+	default 0x88000000
+
+config BOOT_OOPS_BUF_MEM_BASE
+	hex
+	default 0x28000
+	help
+	  temp buf address for oops.
+
+config BOOT_OOPS_RAM_MEM_BASE
+	hex
+	default 0xfffe0000
+	help
+	  address for oops, need to same as kernel dts
+
+config BOOT_OOPS_RAM_MEM_SIZE
+	hex
+	default 0x20000
+	help
+	  size for oops, need to same as kernel dts
+
+config BOOT_FILE_CRT_MEM_BASE
+	hex
+	default 0x29000
+	help
+	  boot file crt from the UFS.
+
+config BOOT_FILE_CRT_MEM_SIZE
+	hex
+	default 0x2000
+	help
+	  boot file crt size
+
+config BOOT_FILE_LAYOUT_MEM_BASE
+	hex
+	default 0x4a000
+	help
+	  boot file layout from the UFS.
+
+config BOOT_ENV_MEM_BASE
+	hex
+	default 0x4b000
+	help
+	  boot env between bootblock-x and bootblock-a/bootblock-b
+
+config PSCI_SHARED_MEM_BASE
+	hex
+	default 0x2f000
+	help
+	  ATF and bootblock share mem for PSCI
+
+config ATF_BL31_BASE
+	hex
+	default 0x30000
+	help
+	  ATF BL31 start
+
+config ATF_BL31_SIZE
+	hex
+	default 0x14000
+	help
+	  ATF BL31 size
+
+config TURBO_TRAV_MEMCLK_INPUT
+	bool "MEMCLK user input"
+	help
+	  user can input during runtime
+
+config TURBO_TRAV_TWIN_MEMCLK
+	int "MEMCLK_TWIN"
+	depends on !TURBO_TRAV_MEMCLK_INPUT
+	default 2133
+	help
+	  MEMCLK_TWIN selection: 533, 1066, 1866, 2133, other than those will use default instead.
+
+config TURBO_TRAV_MEMCLK
+	int "MEMCLK"
+	depends on !TURBO_TRAV_MEMCLK_INPUT
+	default 1866
+	help
+	  MEMCLK selection: 533, 1066, 1866, 2133, other than those will use default instead.
+
+config TURBO_TRAV_CPUCL_CLK_INPUT
+	bool "CPUCL_CLK user input"
+	help
+	  user can input during runtim
+
+config TURBO_TRAV_CPUCL_CLK
+	int "CPUCL_CLK"
+	depends on !TURBO_TRAV_CPUCL_CLK_INPUT
+	default 2000
+	help
+	  MEMCLK selection: 1000, 1500, 1600, 2000, 2200, 2400, other than those will use default instead.
+
+config TURBO_TRAV_GPUCLK_INPUT
+	bool "GPUCLK user input"
+	depends on USE_BLK_GPU
+	help
+	  user can input during runtime
+
+config TURBO_TRAV_TWIN_GPUCLK
+	int "GPUCLK_TWIn"
+	depends on !TURBO_TRAV_GPUCLK_INPUT && USE_BLK_GPU
+	default 1000
+	help
+	  GPUCLK_TWIN selection: 250, 700, 1000, other those will use default instead.
+
+config TURBO_TRAV_GPUCLK
+	int "GPUCLK"
+	depends on !TURBO_TRAV_GPUCLK_INPUT && USE_BLK_GPU
+	default 700
+	help
+	  GPUCLK selection: 250, 700, 1000, other those will use default instead.
+
+config TURBO_TRAV_TRIPCLK_INPUT
+	bool "TRIPCLK user input"
+	depends on (USE_BLK_TRIP0 || USE_BLK_TRIP1)
+	help
+	  user can input during runtime
+
+config TURBO_TRAV_TRIPCLK
+	int "TRIPCLK"
+	depends on !TURBO_TRAV_TRIPCLK_INPUT && (USE_BLK_TRIP0 || USE_BLK_TRIP1)
+	default 2000
+	help
+	  TRIPCLK selection: 400, 800, 1600, 2000, 2400, other than those will use default instead.
+
+config TZ_BLK_CAM_CSI
+	bool "TZ_BLK_CAM_CSI"
+	help
+          TrustZone Setting for BLK_CAM_CSI.
+	default y
+
+config TZ_BLK_CAM_DPRX
+	bool "TZ_BLK_CAM_DPRX"
+	help
+          TrustZone Setting for BLK_CAM_DPRX.
+	default n
+
+config TZ_BLK_CMU
+	bool "TZ_BLK_CMU"
+	help
+          TrustZone Setting for BLK_CMU.
+	default y
+
+config TZ_BLK_CORE_GT
+	bool "TZ_BLK_CORE_GT"
+	help
+          TrustZone Setting for BLK_CORE_GT.
+	default y
+
+config TZ_BLK_CPUCL
+	bool "TZ_BLK_CPUCL"
+	help
+          TrustZone Setting for BLK_CPUCL.
+	default y
+
+config TZ_BLK_FSYS0
+	bool "TZ_BLK_FSYS0"
+	help
+          TrustZone Setting for BLK_FSYS0.
+	default y
+
+config TZ_BLK_FSYS0_NSFMP
+	bool "TZ_BLK_FSYS0_NSFMP"
+	depends on TZ_BLK_FSYS0
+	help
+	  TrustZone Setting for NSFMP (enable non-secure access to FMPSECURITY register)
+	default n
+
+config TZ_BLK_FSYS1
+	bool "TZ_BLK_FSYS1"
+	help
+          TrustZone Setting for BLK_FSYS1.
+	default y
+
+config TZ_BLK_GPU
+	bool "TZ_BLK_GPU"
+	help
+          TrustZone Setting for BLK_GPU.
+	default y
+
+config TZ_BLK_IMEM
+	bool "TZ_BLK_IMEM"
+	help
+          TrustZone Setting for BLK_IMEM.
+	default y
+
+config TZ_BLK_ISP
+	bool "TZ_BLK_ISP"
+	help
+          TrustZone Setting for BLK_ISP.
+	default y
+
+config TZ_BLK_MFC
+	bool "TZ_BLK_MFC"
+	help
+          TrustZone Setting for BLK_MFC.
+	default y
+
+config TZ_BLK_MIF0
+	bool "TZ_BLK_MIF0"
+	help
+          TrustZone Setting for BLK_MIF0.
+	default y
+
+config TZ_BLK_PERIC
+	bool "TZ_BLK_PERIC"
+	help
+          TrustZone Setting for BLK_PERIC.
+	default y
+
+config TZ_BLK_PMU
+	bool "TZ_BLK_PMU"
+	help
+          TrustZone Setting for BLK_PMU.
+	default y
+
+config TZ_BLK_TRIP0
+	bool "TZ_BLK_TRIP0"
+	help
+          TrustZone Setting for BLK_TRIP0.
+	default y
+
+config TZ_BLK_TRIP1
+	bool "TZ_BLK_TRIP1"
+	help
+          TrustZone Setting for BLK_TRIP1.
+	default y
+
+config TRAV_UFS
+	bool "TRAV_UFS"
+	help
+        Ufs support for Trav.
+	default n
+
+config TRAV_UFS_CONFIGURE_DEVICE_LUN
+	bool "TRAV_UFS_CONFIGURE_DEVICE_LUN"
+	depends on TRAV_UFS
+	help
+        Configure ufs device lun for Trav.
+	default n
+
+config USE_BLK_GPU
+	bool "USE_BLK_GPU"
+	help
+	  Clock Setting for BLK_GPU.
+	default y
+
+config USE_BLK_TRIP0
+	bool "USE_BLK_TRIP0"
+	help
+	  Clock Setting for BLK_TRIP0.
+	default y
+
+config USE_BLK_TRIP1
+        bool "USE_BLK_TRIP1"
+        help
+          Clock Setting for BLK_TRIP1.
+	default y
+
+config USE_BLK_FSYS0
+	bool "USE_BLK_FSYS0"
+	help
+	  Clock Setting for BLK_FSYS0.
+	default y
+
+config USE_BLK_FSYS1
+        bool "USE_BLK_FSYS1"
+        help
+          Clock Setting for BLK_FSYS1.
+	default y
+
+config USE_BLK_MFC
+        bool "USE_BLK_MFC"
+        help
+          Clock Setting for BLK_MFC.
+	default y
+
+config USE_BLK_CSI
+        bool "USE_BLK_CSI"
+        help
+          Clock Setting for BLK_CSI.
+	default y
+
+config USE_BLK_DPRX0
+        bool "USE_BLK_DPRX0"
+        help
+          Clock Setting for BLK_DPRX0.
+	default n
+
+config USE_BLK_DPRX1
+        bool "USE_BLK_DPRX1"
+        help
+          Clock Setting for BLK_DPRX1.
+	default n
+
+config USE_BLK_ISP
+        bool "USE_BLK_ISP"
+        help
+          Clock Setting for BLK_ISP.
+	default y
+endif

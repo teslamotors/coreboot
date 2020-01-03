@@ -71,6 +71,11 @@ asmlinkage void console_init(void)
 
 	console_hw_init();
 
+#if IS_ENABLED(CONFIG_BOOTBLOCK_X)
+	printk(BIOS_ERR, "\n\ncoreboot-%s%s %s " ENV_STRING " starting...\n",
+	       coreboot_version, coreboot_extra_version, coreboot_build);
+#else
 	printk(BIOS_INFO, "\n\ncoreboot-%s%s %s " ENV_STRING " starting...\n",
 	       coreboot_version, coreboot_extra_version, coreboot_build);
+#endif
 }

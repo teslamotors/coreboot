@@ -90,6 +90,7 @@ size_t cbfs_load_and_decompress(const struct region_device *rdev, size_t offset,
 	size_t in_size, void *buffer, size_t buffer_size, uint32_t compression)
 {
 	size_t out_size;
+	void *map;
 
 	switch (compression) {
 	case CBFS_COMPRESS_NONE:
@@ -104,6 +105,7 @@ size_t cbfs_load_and_decompress(const struct region_device *rdev, size_t offset,
 		    !IS_ENABLED(CONFIG_COMPRESS_PRERAM_STAGES))
 			return 0;
 
+#if !ENV_RAMSTAGE
 		/* Load the compressed image to the end of the available memory
 		 * area for in-place decompression. It is the responsibility of
 		 * the caller to ensure that buffer_size is large enough
@@ -115,6 +117,18 @@ size_t cbfs_load_and_decompress(const struct region_device *rdev, size_t offset,
 		timestamp_add_now(TS_START_ULZ4F);
 		out_size = ulz4fn(compr_start, in_size, buffer, buffer_size);
 		timestamp_add_now(TS_END_ULZ4F);
+#else
+		map = rdev_mmap(rdev, offset, in_size);
+		if (map == NULL)
+			return 0;
+
+		timestamp_add_now(TS_START_ULZ4F);
+		out_size = ulz4fn(map, in_size, buffer, buffer_size);
+		timestamp_add_now(TS_END_ULZ4F);
+
+		rdev_munmap(rdev, map);
+#endif
+
 		return out_size;
 
 	case CBFS_COMPRESS_LZMA:
@@ -123,7 +137,7 @@ size_t cbfs_load_and_decompress(const struct region_device *rdev, size_t offset,
 		if ((ENV_ROMSTAGE || ENV_POSTCAR)
 			&& !IS_ENABLED(CONFIG_COMPRESS_RAMSTAGE))
 			return 0;
-		void *map = rdev_mmap(rdev, offset, in_size);
+		map = rdev_mmap(rdev, offset, in_size);
 		if (map == NULL)
 			return 0;
 
@@ -213,7 +227,7 @@ size_t cbfs_prog_stage_section(struct prog *pstage, uintptr_t *base)
 	return stage.memlen;
 }
 
-int cbfs_prog_stage_load(struct prog *pstage)
+int cbfs_prog_stage_load_ex(struct prog *pstage, unsigned char **load_addr, int *load_size)
 {
 	struct cbfs_stage stage;
 	uint8_t *load;
@@ -261,7 +275,18 @@ out:
 	prog_set_area(pstage, load, stage.memlen);
 	prog_set_entry(pstage, entry, NULL);
 
+	if (load_addr)
+		*load_addr = load;
+
+	if (load_size)
+		*load_size = stage.memlen;
+
 	return 0;
+}
+
+int cbfs_prog_stage_load(struct prog *pstage)
+{
+	return cbfs_prog_stage_load_ex(pstage, NULL, NULL);
 }
 
 /* This only supports the "COREBOOT" fmap region. */

@@ -148,7 +148,7 @@ static void print_exception_and_die(struct exc_state *state, uint64_t idx)
 
 static int handle_exception(struct exc_state *state, uint64_t idx)
 {
-	int ret = EXC_RET_ABORT;
+	int ret = EXC_RET_IGNORED;
 
 	struct exception_handler *h;
 

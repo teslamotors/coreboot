@@ -1,0 +1,16 @@
+if VENDOR_TURBO
+
+choice
+	prompt "Mainboard model"
+
+source "src/mainboard/turbo/*/Kconfig.name"
+
+endchoice
+
+source "src/mainboard/turbo/*/Kconfig"
+
+config MAINBOARD_VENDOR
+	string
+	default "TURBO"
+
+endif # VENDOR_TURBO

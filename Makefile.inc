@@ -97,7 +97,7 @@ subdirs-y += util/checklist
 
 #######################################################################
 # Add source classes and their build options
-classes-y := ramstage romstage bootblock postcar smm smmstub cpu_microcode verstage
+classes-y := ramstage bootblock postcar smm smmstub cpu_microcode verstage
 
 # Add dynamic classes for rmodules
 $(foreach supported_arch,$(ARCH_SUPPORTED), \
@@ -178,7 +178,6 @@ ramstage-postprocess=$$(eval DEPENDENCIES+=$$(addsuffix .d,$$(basename $(1)))) \
 	$(eval ramstage-objs:=$(d)ramstage.a $(filter-out $(filter-out %.ld, $(call files-in-dir,$(d),$(1))),$(ramstage-objs))))
 
 bootblock-generic-ccopts += -D__PRE_RAM__ -D__BOOTBLOCK__
-romstage-generic-ccopts += -D__PRE_RAM__ -D__ROMSTAGE__
 ramstage-generic-ccopts += -D__RAMSTAGE__
 ifeq ($(CONFIG_TRACE),y)
 ramstage-c-ccopts += -finstrument-functions
@@ -199,7 +198,6 @@ export UPDATED_SUBMODULES:=1
 endif
 
 ramstage-c-deps:=$$(OPTION_TABLE_H)
-romstage-c-deps:=$$(OPTION_TABLE_H)
 verstage-c-deps:=$$(OPTION_TABLE_H)
 bootblock-c-deps:=$$(OPTION_TABLE_H)
 $(foreach type,ads adb, \
@@ -523,7 +521,6 @@ $(DEVICETREE_STATIC_C): $(DEVICETREE_FILE) $(objutil)/sconfig/sconfig
 	$(objutil)/sconfig/sconfig $(DEVICETREE_FILE) $(DEVICETREE_STATIC_C)
 
 ramstage-y+=$(DEVICETREE_STATIC_C)
-romstage-y+=$(DEVICETREE_STATIC_C)
 verstage-y+=$(DEVICETREE_STATIC_C)
 bootblock-y+=$(DEVICETREE_STATIC_C)
 postcar-y+=$(DEVICETREE_STATIC_C)
@@ -534,12 +531,11 @@ clean-abuild:
 	rm -rf coreboot-builds
 
 clean-for-update-target: clean-payloads
-	rm -f $(obj)/ramstage?* $(obj)/coreboot.romstage $(obj)/coreboot.pre* $(obj)/coreboot.bootblock $(obj)/coreboot.a
-	rm -rf $(obj)/bootblock?* $(obj)/romstage?* $(obj)/location.*
+	rm -f $(obj)/ramstage?* $(obj)/coreboot.pre* $(obj)/coreboot.bootblock $(obj)/coreboot.a
+	rm -rf $(obj)/bootblock?* $(obj)/location.*
 	rm -f $(obj)/option_table.* $(obj)/crt0.S $(obj)/ldscript
 	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/static.c $(obj)/mainboard/$(MAINBOARDDIR)/config.py $(obj)/mainboard/$(MAINBOARDDIR)/static.dot
 	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/crt0.s $(obj)/mainboard/$(MAINBOARDDIR)/crt0.disasm
-	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/romstage.inc
 	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/bootblock.* $(obj)/dsdt.*
 	rm -f $(obj)/cpu/x86/smm/smm_bin.c $(obj)/cpu/x86/smm/smm.* $(obj)/cpu/x86/smm/smm
 
@@ -907,13 +903,6 @@ endif
 	@printf "    CBFSPRINT  $(subst $(obj)/,,$(@))\n\n"
 	$(CBFSTOOL) $@ print -r $(subst $(spc),$(comma),$(all-regions))
 
-cbfs-files-y += $(CONFIG_CBFS_PREFIX)/romstage
-$(CONFIG_CBFS_PREFIX)/romstage-file := $(objcbfs)/romstage.elf
-$(CONFIG_CBFS_PREFIX)/romstage-type := stage
-$(CONFIG_CBFS_PREFIX)/romstage-compression := $(CBFS_PRERAM_COMPRESS_FLAG)
-ifeq ($(CONFIG_ARCH_ROMSTAGE_ARM),y)
-$(CONFIG_CBFS_PREFIX)/romstage-options := -b 0
-endif
 ifeq ($(CONFIG_ARCH_ROMSTAGE_X86_32)$(CONFIG_ARCH_ROMSTAGE_X86_64),y)
 # Use a 64 byte alignment to provide a minimum alignment
 # requirement for the overall romstage. While the first object within

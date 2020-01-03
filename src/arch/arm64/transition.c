@@ -61,7 +61,10 @@ void transition_with_entry(void *entry, void *arg, struct exc_state *exc_state)
 	/* Argument to entry point goes into X0 */
 	exc_state->regs.x[X0_INDEX] = (uint64_t)arg;
 	/* Entry point goes into ELR */
-	exc_state->elx.elr = (uint64_t)entry;
+	if (!IS_ENABLED(CONFIG_JUMP_TO_KERNEL))
+		exc_state->elx.elr = (uint64_t)entry;
+	else
+		exc_state->elx.elr = (uint64_t)CONFIG_KERNEL_LOAD_ADDRESS;
 
 	transition(exc_state);
 }

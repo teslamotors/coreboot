@@ -161,6 +161,62 @@ fail:
 
 #ifdef __RAMSTAGE__ // gc-sections should take care of this
 
+void __attribute__((weak)) update_dtb(unsigned char *load, int size) {}
+
+int __attribute__((weak)) use_dtb2(void)
+{
+	return 0;
+}
+
+static void linux_dtb_initrd_load(void)
+{
+	struct prog linux2 =
+		PROG_INIT(PROG_PAYLOAD, CONFIG_CBFS_PREFIX "/linux");
+	struct prog dtb =
+		PROG_INIT(PROG_PAYLOAD, CONFIG_CBFS_PREFIX "/dtb");
+	struct prog dtb2 =
+		PROG_INIT(PROG_PAYLOAD, CONFIG_CBFS_PREFIX "/dtb2");
+	struct prog initrd =
+		PROG_INIT(PROG_PAYLOAD, CONFIG_CBFS_PREFIX "/initrd");
+
+	struct prog *p_dtb = use_dtb2() ? &dtb2 : &dtb;
+
+	if (!IS_ENABLED(CONFIG_JUMP_TO_KERNEL))
+		return;
+
+	if (!prog_locate(&linux2)) {
+		timestamp_add_now(TS_START_COPYLINUX);
+		if (cbfs_prog_stage_load(&linux2))
+			die("linux was not loaded!.\n");
+
+		timestamp_add_now(TS_END_COPYLINUX);
+	} else
+		printk(BIOS_ERR, "linux was not found.\n");
+
+	if (!prog_locate(p_dtb)) {
+		unsigned char *load;
+		int size;
+
+		timestamp_add_now(TS_START_COPYDTB);
+		if (cbfs_prog_stage_load_ex(p_dtb, &load, &size))
+			die("dtb was not loaded.\n");
+
+		update_dtb(load, size);
+
+		timestamp_add_now(TS_END_COPYDTB);
+	} else
+		printk(BIOS_ERR, "dtb was not found.\n");
+
+	if (!prog_locate(&initrd)) {
+		timestamp_add_now(TS_START_COPYINITRD);
+		if (cbfs_prog_stage_load(&initrd))
+			die("initrd was not loaded.\n");
+
+		timestamp_add_now(TS_END_COPYINITRD);
+	} else
+		printk(BIOS_INFO, "initrd was not found.\n");
+}
+
 static struct prog global_payload =
 	PROG_INIT(PROG_PAYLOAD, CONFIG_CBFS_PREFIX "/payload");
 
@@ -170,8 +226,13 @@ void __attribute__((weak)) mirror_payload(struct prog *payload)
 
 void payload_load(void)
 {
+#if !IS_ENABLED(CONFIG_PAYLOAD_NONE)
 	struct prog *payload = &global_payload;
+#endif
 
+	linux_dtb_initrd_load();
+
+#if !IS_ENABLED(CONFIG_PAYLOAD_NONE)
 	timestamp_add_now(TS_LOAD_PAYLOAD);
 
 	if (prog_locate(payload))
@@ -186,6 +247,7 @@ void payload_load(void)
 out:
 	if (prog_entry(payload) == NULL)
 		die("Payload not loaded.\n");
+#endif
 }
 
 void payload_run(void)
@@ -195,7 +257,8 @@ void payload_run(void)
 	/* Reset to booting from this image as late as possible */
 	boot_successful();
 
-	printk(BIOS_DEBUG, "Jumping to boot code at %p(%p)\n",
+#if !IS_ENABLED(CONFIG_PAYLOAD_NONE)
+	printk(BIOS_ERR, "Jumping to boot code at %p(%p)\n",
 		prog_entry(payload), prog_entry_arg(payload));
 
 	post_code(POST_ENTER_ELF_BOOT);
@@ -206,6 +269,7 @@ void payload_run(void)
 	 * we stayed within our bounds.
 	 */
 	checkstack(_estack, 0);
+#endif
 
 	prog_run(payload);
 }

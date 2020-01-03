@@ -81,7 +81,9 @@ static struct param {
 	int fit_empty_entries;
 	enum comp_algo compression;
 	int precompression;
+#if VBOOT_SUPPORT
 	enum vb2_hash_algorithm hash;
+#endif
 	/* for linux payloads */
 	char *initrd;
 	char *cmdline;
@@ -90,7 +92,9 @@ static struct param {
 	/* All variables not listed are initialized as zero. */
 	.arch = CBFS_ARCHITECTURE_UNKNOWN,
 	.compression = CBFS_COMPRESS_NONE,
+#if VBOOT_SUPPORT
 	.hash = VB2_HASH_INVALID,
+#endif
 	.headeroffset = ~0,
 	.region_name = SECTION_NAME_PRIMARY_CBFS,
 	.u64val = -1,
@@ -182,9 +186,11 @@ static int do_cbfs_locate(int32_t *cbfs_addr, size_t metadata_size)
 			metadata_size += sizeof(struct cbfs_file_attr_position);
 	}
 
+#if VBOOT_SUPPORT
 	/* Take care of the hash attribute if it is used */
 	if (param.hash != VB2_HASH_INVALID)
 		metadata_size += sizeof(struct cbfs_file_attr_hash);
+#endif
 
 	int32_t address = cbfs_locate_entry(&image, buffer.size, param.pagesize,
 						param.alignment, metadata_size);
@@ -377,6 +383,7 @@ static int cbfs_add_component(const char *filename,
 		return 1;
 	}
 
+#if VBOOT_SUPPORT
 	if (param.hash != VB2_HASH_INVALID)
 		if (cbfs_add_file_hash(header, &buffer, param.hash) == -1) {
 			ERROR("couldn't add hash for '%s'\n", name);
@@ -384,6 +391,7 @@ static int cbfs_add_component(const char *filename,
 			buffer_delete(&buffer);
 			return 1;
 		}
+#endif
 
 	if (param.autogen_attr) {
 		/* Add position attribute if assigned */
@@ -1379,6 +1387,7 @@ int main(int argc, char **argv)
 									optarg);
 				break;
 			}
+#if VBOOT_SUPPORT
 			case 'A': {
 				int algo = cbfs_parse_hash_algo(optarg);
 				if (algo >= 0)
@@ -1390,6 +1399,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			}
+#endif
 			case 'M':
 				param.fmap = optarg;
 				break;

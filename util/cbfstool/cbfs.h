@@ -19,7 +19,13 @@
 #include "common.h"
 #include <stdint.h>
 
-#include <vb2_api.h>
+#ifndef VBOOT_SUPPORT
+  #define VBOOT_SUPPORT 0
+#endif
+
+#if VBOOT_SUPPORT
+  #include <vb2_api.h>
+#endif
 
 /* cbfstool will fail when trying to build a cbfs_file header that's larger
  * than MAX_CBFS_FILE_HEADER_BUFFER. 1K should give plenty of room. */
@@ -228,6 +234,7 @@ static struct typedesc_t filetypes[] unused = {
 	{CBFS_COMPONENT_NULL, "null"}
 };
 
+#if VBOOT_SUPPORT
 static const struct typedesc_t types_cbfs_hash[] unused = {
 	{VB2_HASH_INVALID, "none"},
 	{VB2_HASH_SHA1, "sha1"},
@@ -244,6 +251,7 @@ static size_t widths_cbfs_hash[] unused = {
 };
 
 #define CBFS_NUM_SUPPORTED_HASHES ARRAY_SIZE(widths_cbfs_hash)
+#endif
 
 #define CBFS_SUBHEADER(_p) ( (void *) ((((uint8_t *) (_p)) + ntohl((_p)->offset))) )
 

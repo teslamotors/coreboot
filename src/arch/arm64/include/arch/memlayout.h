@@ -22,6 +22,26 @@
 	REGION(ttb, addr, size, 4K) \
 	_ = ASSERT(size % 4K == 0, "TTB size must be divisible by 4K!");
 
+#define ATF_BL31(addr, size) \
+	REGION(atf_bl31, addr, size, 4K) \
+	_ = ASSERT(size % 4K == 0, "ATF_BL31 size must be divisible by 4K!");
+
+#define BOOT_FILE_CRT_MEM(addr, size) \
+	REGION(boot_file_crt_mem, addr, size, 4K) \
+	_ = ASSERT(size % 4K == 0, "BOOT_FILE_CRT_MEM size must be divisible by 4K!");
+
+#define BOOT_FILE_LAYOUT_MEM(addr, size) \
+	REGION(boot_file_layout_mem, addr, size, 4K) \
+	_ = ASSERT(size % 4K == 0, "BOOT_FILE_LAYOUT_MEM size must be divisible by 4K!");
+
+#define BOOT_ENV_MEM(addr, size) \
+	REGION(boot_env_mem, addr, size, 4K) \
+	_ = ASSERT(size % 4K == 0, "BOOT_ENV_MEM size must be divisible by 4K!");
+
+#define PSCI_SHARED_MEM(addr, size) \
+	REGION(psci_shared_mem, addr, size, 4K) \
+	_ = ASSERT(size % 4K == 0, "PSCI_SHARED_MEM size must be divisible by 4K!");
+
 #define DMA_COHERENT(addr, size) \
 	REGION(dma_coherent, addr, size, 4K) \
 	_ = ASSERT(size % 4K == 0, \

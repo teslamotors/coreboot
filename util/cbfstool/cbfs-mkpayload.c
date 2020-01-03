@@ -241,6 +241,24 @@ out:
 	return ret;
 }
 
+static void xdr_segs_flat_payload(struct buffer *output,
+	struct cbfs_stage *segs, int nseg)
+{
+	struct buffer outheader;
+	int i;
+
+	outheader.data = output->data;
+	outheader.size = 0;
+
+	for(i = 0; i < nseg; i++){
+		xdr_le.put32(&outheader, segs[i].compression);
+		xdr_le.put64(&outheader, segs[i].entry);
+		xdr_le.put64(&outheader, segs[i].load);
+		xdr_le.put32(&outheader, segs[i].len);
+		xdr_le.put32(&outheader, segs[i].memlen);
+	}
+}
+
 int parse_flat_binary_to_payload(const struct buffer *input,
 				 struct buffer *output,
 				 uint32_t loadaddress,
@@ -248,7 +266,7 @@ int parse_flat_binary_to_payload(const struct buffer *input,
 				 enum comp_algo algo)
 {
 	comp_func_ptr compress;
-	struct cbfs_payload_segment segs[2];
+	struct cbfs_stage segs[1];
 	int doffset, len = 0;
 
 	compress = compression_function(algo);
@@ -261,16 +279,15 @@ int parse_flat_binary_to_payload(const struct buffer *input,
 		return -1;
 	memset(output->data, 0, output->size);
 
-	doffset = (2 * sizeof(*segs));
+	doffset = (1 * sizeof(*segs));
 
 	/* Prepare code segment */
-	segs[0].type = PAYLOAD_SEGMENT_CODE;
-	segs[0].load_addr = loadaddress;
-	segs[0].mem_len = input->size;
-	segs[0].offset = doffset;
+	segs[0].entry = entrypoint;
+	segs[0].load = loadaddress;
+	segs[0].memlen = input->size;
 
 	if (!compress(input->data, input->size, output->data + doffset, &len) &&
-	    (unsigned int)len < input->size) {
+	    (unsigned int)len <= input->size) {
 		segs[0].compression = algo;
 		segs[0].len = len;
 	} else {
@@ -282,10 +299,9 @@ int parse_flat_binary_to_payload(const struct buffer *input,
 	}
 
 	/* prepare entry point segment */
-	segs[1].type = PAYLOAD_SEGMENT_ENTRY;
-	segs[1].load_addr = entrypoint;
 	output->size = doffset + segs[0].len;
-	xdr_segs(output, segs, 2);
+
+	xdr_segs_flat_payload(output, segs, 1);
 	return 0;
 }
 

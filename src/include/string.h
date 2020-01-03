@@ -119,6 +119,24 @@ static inline int strncmp(const char *s1, const char *s2, int maxlen)
 
 	return 0;
 }
+/**
+ * Find a substring within a string.
+ *
+ * @param h The haystack string.
+ * @param n The needle string (substring).
+ * @return A pointer to the first occurence of the substring in
+ * the string, or NULL if the substring was not encountered within the string.
+ */
+static inline char *strnstr(const char *h, int hn, const char *n, int nn)
+{
+	int i;
+
+	for (i = 0; i <= hn - nn; i++)
+		if (!memcmp(&h[i], n, nn))
+			return (char *)&h[i];
+
+	return NULL;
+}
 
 static inline int isspace(int c)
 {

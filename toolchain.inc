@@ -47,7 +47,7 @@ HOSTCXX:=CCC_CXX="$(HOSTCXX)" $(CXX)
 ROMCC=CCC_CC="$(ROMCC_BIN)" $(CC)
 endif
 
-COREBOOT_STANDARD_STAGES := bootblock verstage romstage ramstage
+COREBOOT_STANDARD_STAGES := bootblock verstage ramstage
 
 ARCHDIR-i386	:= x86
 ARCHDIR-x86_32	:= x86
@@ -195,9 +195,11 @@ $(foreach arch,$(sort \
 		Install one or use the coreboot toolchain?)) )
 # If iasl isn't present, fail
 # TODO: Figure out if iasl is even needed for the build.
+ifeq ($(CONFIG_HAVE_ACPI_TABLES),y)
 $(if $(IASL),, $(eval COMPILERFAIL:=1)$(eval IASLFAIL:=1) \
 	$(warning iasl not found. \
 		Please install it or use the coreboot toolchain.))
+endif
 endif
 
 # If the compiler check failed, print out warnings

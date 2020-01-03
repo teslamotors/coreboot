@@ -18,7 +18,14 @@
 
 #include <commonlib/cbfs_serialized.h>
 #include <commonlib/region.h>
-#include <vb2_api.h>
+
+#ifndef VBOOT_SUPPORT
+  #define VBOOT_SUPPORT 0
+#endif
+
+#if VBOOT_SUPPORT
+  #include <vb2_api.h>
+#endif
 
 /* Object representing cbfs files. */
 struct cbfsf {
@@ -70,6 +77,7 @@ size_t cbfs_for_each_attr(void *metadata, size_t metadata_size,
  */
 int cbfsf_decompression_info(struct cbfsf *fh, uint32_t *algo, size_t *size);
 
+#if VBOOT_SUPPORT
 /*
  * Perform the vb2 hash over the CBFS region skipping empty file contents.
  * Caller is responsible for providing the hash algorithm as well as storage
@@ -78,5 +86,6 @@ int cbfsf_decompression_info(struct cbfsf *fh, uint32_t *algo, size_t *size);
 int cbfs_vb2_hash_contents(const struct region_device *cbfs,
 				enum vb2_hash_algorithm hash_alg, void *digest,
 				size_t digest_sz);
+#endif
 
 #endif

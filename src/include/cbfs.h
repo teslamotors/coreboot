@@ -57,6 +57,7 @@ size_t cbfs_prog_stage_section(struct prog *pstage, uintptr_t *base);
 
 /* Load stage into memory filling in prog. Return 0 on success. < 0 on error. */
 int cbfs_prog_stage_load(struct prog *prog);
+int cbfs_prog_stage_load_ex(struct prog *prog, unsigned char **load_addr, int *load_size);
 
 /*****************************************************************
  * Support structures and functions. Direct field access should  *

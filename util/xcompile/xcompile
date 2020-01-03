@@ -320,7 +320,7 @@ arch_config_arm() {
 arch_config_arm64() {
 	TARCH="arm64"
 	TBFDARCHS="littleaarch64"
-	TCLIST="aarch64"
+	TCLIST="aarch64 aarch64-tesla"
 	TWIDTH="64"
 	TSUPP="arm64 armv8_64"
 	TABI="elf"
@@ -398,6 +398,7 @@ test_architecture() {
 		search="$search $toolchain-linux-"
 		search="$search $toolchain-"
 		search="$search $toolchain-linux-gnueabi-"
+		search="$search $XGCCPATH$toolchain-linux-gnueabi-"
 	done
 	echo "###########################################################################"
 	echo "# $architecture"

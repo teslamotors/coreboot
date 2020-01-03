@@ -1,0 +1,20 @@
+#ifndef CPU_TURBO_TRAV_NETSPEED_H
+#define CPU_TURBO_TRAV_NETSPEED_H
+
+#include <config.h>
+
+#define CA72_CL0_PORT			0x1182bf70
+#define CA72_CL1_PORT			0x1182ff70
+#define CA72_CL2_PORT			0x11833f70
+#define FSYS0_TCU_PORT			0x11843f70
+#define GPU_M0_PORT			0x11853f70
+#define GPU_M1_PORT			0x11857f70
+#define GPU_M2_PORT			0x1185bf70
+#define GPU_M3_PORT			0x1185ff70
+#define IMEM_TCU_PORT			0x1186bf70
+#define ISP_TCU_PORT			0x1187bf70
+#define PERIC_TCU_PORT			0x118cbf70
+#define TRIP0_TCU_PORT			0x11907f70
+#define TRIP1_TCU_PORT			0x11913f70
+
+#endif
