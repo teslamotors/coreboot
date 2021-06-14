@@ -24,6 +24,8 @@ void pciexp_scan_bus(struct bus *bus, unsigned int min_devfn,
 
 void pciexp_scan_bridge(struct device *dev);
 
+int pciexp_type(struct device *dev);
+
 extern struct device_operations default_pciexp_ops_bus;
 
 #if CONFIG(PCIEXP_HOTPLUG)

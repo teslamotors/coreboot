@@ -57,6 +57,16 @@ enum sd_emmc_driver_strength {
 	SD_EMMC_DRIVE_STRENGTH_D,
 };
 
+enum picasso_audio_io_control {
+	AUDIO_IO_MAXHDAMINSOUNDWIRE = 0,
+	AUDIO_IO_MAXMHDAMINSOUNDWIRE = 1,
+	AUDIO_IO_MAXSOUNDWIREMINHDA = 2,
+	AUDIO_IO_MAXSOUNDWIREMINMHDA = 3,
+	AUDIO_IO_I2STDM = 4,
+	AUDIO_IO_DISABLED = 7,
+	AUDIO_IO_SOUNDWIRE = 8,
+};
+
 struct soc_amd_picasso_config {
 	struct soc_amd_common_config common_config;
 	/*
@@ -219,10 +229,22 @@ struct soc_amd_picasso_config {
 
 	/* The array index is the general purpose PCIe clock output number. */
 	enum gpp_clk_req_setting gpp_clk_config[GPP_CLK_OUTPUT_COUNT];
+
+	enum picasso_audio_io_control audio_io_control;
+
+	enum {
+		PSPP_DISABLED		= 0,
+		PSPP_PERFORMANCE	= 1,
+		PSPP_BALANCE		= 2,
+		PSPP_POWER_SAVING	= 3,
+	} pspp_policy;
 };
 
 typedef struct soc_amd_picasso_config config_t;
 
 extern struct device_operations pci_domain_ops;
+
+void mainboard_pre_soc_init(void);
+void mainboard_fsp_silicon_fixup(void);
 
 #endif /* __PICASSO_CHIP_H__ */

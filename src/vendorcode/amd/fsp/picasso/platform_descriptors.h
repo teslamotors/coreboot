@@ -67,6 +67,17 @@ typedef enum {
 	ASPM_MAX		// Not valid value, used to verify input
 } dxio_aspm_type;
 
+/* PCIe link hotplug support */
+typedef enum {
+	HOTPLUG_DISABLED = 0,
+	HOTPLUG_BASIC,
+	HOTPLUG_SERVER,
+	HOTPLUG_ENHANCED,
+	HOTPLUG_INBOARD,
+	HOTPLUG_SERVERSSD,
+	HOTPLUG_MAX
+} dxio_hotplug_type;
+
 /* DDI Aux channel */
 typedef enum {
 	AUX1 = 0,
@@ -173,7 +184,7 @@ typedef struct __packed {
 	uint32_t	link_aspm_L1_1		:1;	// En/Dis root port capabilities for L1.1
 	uint32_t	link_aspm_L1_2		:1;	// En/Dis root port capabilities for L1.2
 	uint32_t	clk_req			:4;	// See cpm_clk_req
-	uint8_t		link_hotplug;			// Currently unused by FSP
+	uint8_t		link_hotplug;			// Link hotplug support
 	uint8_t		slot_power_limit;		// Currently unused by FSP
 	uint32_t	slot_power_limit_scale	:2;	// Currently unused by FSP
 	uint32_t	reserved_4		:6;

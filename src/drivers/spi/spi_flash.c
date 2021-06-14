@@ -324,10 +324,16 @@ static const struct spi_flash_vendor_info *spi_flash_vendors[] = {
 	&spi_flash_sst_ai_vi,
 	&spi_flash_sst_vi,
 #endif
-#if CONFIG(SPI_FLASH_STMICRO)
+#if CONFIG(SPI_FLASH_STMICRO_SE32K)
 	&spi_flash_stmicro1_vi,
+#endif
+#if CONFIG(SPI_FLASH_STMICRO_SE64K)
 	&spi_flash_stmicro2_vi,
+#endif
+#if CONFIG(SPI_FLASH_STMICRO_SE256K)
 	&spi_flash_stmicro3_vi,
+#endif
+#if CONFIG(SPI_FLASH_STMICRO_SSE)
 	&spi_flash_stmicro4_vi,
 #endif
 #if CONFIG(SPI_FLASH_WINBOND)
@@ -356,6 +362,8 @@ static int fill_spi_flash(const struct spi_slave *spi, struct spi_flash *flash,
 
 	flash->ops = &vi->desc->ops;
 	flash->prot_ops = vi->prot_ops;
+	flash->rpmc_cmd = vi->rpmc_cmd;
+	flash->rpmc_readout_cmd = vi->rpmc_readout_cmd;
 	flash->part = part;
 
 	if (vi->after_probe)
@@ -737,6 +745,184 @@ int spi_flash_vector_helper(const struct spi_slave *slave,
 	}
 
 	return ret;
+}
+
+static void rpmc_counter_data(u32 counter, u8 *data)
+{
+	data[0] = counter >> 24;
+	data[1] = counter >> 16;
+	data[2] = counter >> 8;
+	data[3] = counter;
+}
+
+static u32 rpmc_counter(u8 *data)
+{
+	return data[0] << 24 |
+	       data[1] << 16 |
+	       data[2] << 8 |
+	       data[3];
+}
+
+static int rpmc_readout(const struct spi_flash *flash, u32 *counter_data)
+{
+	int ret;
+	struct rpmc_readout_cmd {
+		u8 opcode;
+		u8 dummy;
+	} cmd;
+	struct rpmc_readout_rsp {
+		u8 status;
+		u8 tag[12];
+		u8 counter_data[4];
+		u8 sig[32];
+	} rsp;
+
+	memset(&cmd, 0, sizeof(cmd));
+	memset(&rsp, 0, sizeof(rsp));
+
+	cmd.opcode = flash->rpmc_readout_cmd;
+
+	ret = do_spi_flash_cmd(&flash->spi, &cmd, sizeof(cmd), &rsp, sizeof(rsp));
+	if (ret) {
+		printk(BIOS_WARNING, "SF: Failed to send RPMC status command: %d\n", ret);
+		return -1;
+	}
+
+	if (rsp.status == 0) {
+		printk(BIOS_WARNING, "SF: Empty RPMC status\n");
+		return -1;
+	}
+
+	if (rsp.status != SPI_FLASH_RPMC_SUCCESS)
+		return rsp.status;
+
+	if (counter_data)
+		*counter_data = rpmc_counter(rsp.counter_data);
+
+	return 0;
+}
+
+int spi_flash_rpmc_init(const struct spi_flash *flash, u8 counter_addr,
+			u32 key_data, const void *sig)
+{
+	int ret;
+	struct rpmc_init_cmd {
+		u8 opcode;
+		u8 type;
+		u8 counter_addr;
+		u8 reserved;
+		u8 key_data[4];
+		u8 sig[SPI_RPMC_SIG_LEN];
+	} cmd;
+
+	if (!flash->rpmc_cmd) {
+		printk(BIOS_WARNING, "SPI: RPMC not implemented for this"
+			" vendor.\n");
+		return -1;
+	}
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	cmd.opcode = flash->rpmc_cmd;
+	cmd.type = 0x01;
+
+	cmd.counter_addr = counter_addr;
+	rpmc_counter_data(key_data, cmd.key_data);
+	memcpy(cmd.sig, sig, sizeof(cmd.sig));
+
+	ret = do_spi_flash_cmd(&flash->spi, &cmd, sizeof(cmd), NULL, 0);
+	if (ret) {
+		printk(BIOS_WARNING, "SF: Failed to send RPMC initialize command: %d\n", ret);
+		return -1;
+	}
+
+	ret = spi_flash_cmd_wait_ready(flash, SPI_FLASH_RPMC_TIMEOUT_MS);
+	if (ret)
+		return -1;
+
+	return rpmc_readout(flash, NULL);
+}
+
+int spi_flash_rpmc_increment(const struct spi_flash *flash, u8 counter_addr,
+			     u32 counter_data, const u8 *tag, const void *sig)
+{
+	int ret;
+	struct rpmc_increment_cmd {
+		u8 opcode;
+		u8 type;
+		u8 counter_addr;
+		u8 reserved;
+		u8 counter_data[4];
+		u8 sig[SPI_RPMC_SIG_LEN];
+	} cmd;
+
+	if (!flash->rpmc_cmd) {
+		printk(BIOS_WARNING, "SPI: RPMC not implemented for this"
+			" vendor.\n");
+		return -1;
+	}
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	cmd.opcode = flash->rpmc_cmd;
+	cmd.type = 0x02;
+
+	cmd.counter_addr = counter_addr;
+	rpmc_counter_data(counter_data, cmd.counter_data);
+	memcpy(cmd.sig, sig, sizeof(cmd.sig));
+
+	ret = do_spi_flash_cmd(&flash->spi, &cmd, sizeof(cmd), NULL, 0);
+	if (ret) {
+		printk(BIOS_WARNING, "SF: Failed to send RPMC increment command: %d\n", ret);
+		return -1;
+	}
+
+	ret = spi_flash_cmd_wait_ready(flash, SPI_FLASH_RPMC_TIMEOUT_MS);
+	if (ret)
+		return -1;
+
+	return rpmc_readout(flash, NULL);
+}
+
+int spi_flash_rpmc_request(const struct spi_flash *flash, u8 counter_addr,
+			   const u8 *tag, const void *sig, u32 *counter_data)
+{
+	int ret;
+	struct rpmc_request_cmd {
+		u8 opcode;
+		u8 type;
+		u8 counter_addr;
+		u8 reserved;
+		u8 tag[SPI_RPMC_TAG_LEN];
+		u8 sig[SPI_RPMC_SIG_LEN];
+	} cmd;
+
+	if (!flash->rpmc_cmd) {
+		printk(BIOS_WARNING, "SPI: RPMC not implemented for this"
+			" vendor.\n");
+		return -1;
+	}
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	cmd.opcode = flash->rpmc_cmd;
+	cmd.type = 0x03;
+
+	cmd.counter_addr = counter_addr;
+	memcpy(cmd.tag, tag, sizeof(cmd.tag));
+	memcpy(cmd.sig, sig, sizeof(cmd.sig));
+
+	ret = do_spi_flash_cmd(&flash->spi, &cmd, sizeof(cmd), NULL, 0);
+	if (ret) {
+		printk(BIOS_WARNING, "SF: Failed to send RPMC request command: %d\n", ret);
+		return -1;
+	}
+
+	ret = spi_flash_cmd_wait_ready(flash, SPI_FLASH_RPMC_TIMEOUT_MS);
+	if (ret)
+		return -1;
+
+	return rpmc_readout(flash, counter_data);
 }
 
 const struct spi_flash_ops_descriptor spi_flash_pp_0x20_sector_desc = {

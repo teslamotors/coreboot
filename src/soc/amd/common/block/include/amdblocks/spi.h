@@ -29,6 +29,17 @@ enum spi_read_mode {
 					 SPI_READ_MODE_LOWER_BITS(x))
 #define   SPI_ACCESS_MAC_ROM_EN		BIT(22)
 
+/*
+ * Re-purpose unused SPI controller register for semaphore to synchronize SPI access
+ * between SMM and non-SMM software.
+ */
+#define SPI_SEMAPHORE			0xfc
+#define   SPI_SEM_SMI_DENY		BIT(5)
+#define   SPI_SEM_LOCKED		BIT(4)
+
+#define SPI_ALT_CS			0x1d
+#define   SPI_ALT_CS_EN_MASK		(BIT(0) | BIT(1))
+
 #define SPI100_ENABLE			0x20
 #define   SPI_USE_SPI100		BIT(0)
 

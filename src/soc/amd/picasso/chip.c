@@ -91,11 +91,24 @@ static void enable_dev(struct device *dev)
 	}
 }
 
+void __weak mainboard_pre_soc_init(void)
+{
+	/* Default weak implementation */
+}
+
+void __weak mainboard_fsp_silicon_fixup(void)
+{
+	/* Default weak implementation */
+}
+
 static void soc_init(void *chip_info)
 {
+	mainboard_pre_soc_init();
 	default_dev_ops_root.write_acpi_tables = agesa_write_acpi_tables;
 
 	fsp_silicon_init(acpi_is_wakeup_s3());
+
+	mainboard_fsp_silicon_fixup();
 
 	data_fabric_set_mmio_np();
 	southbridge_init(chip_info);

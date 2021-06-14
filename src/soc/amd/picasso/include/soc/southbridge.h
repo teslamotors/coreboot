@@ -86,6 +86,12 @@
 #define PM_RST_CTRL1			0xbe
 #define   SLPTYPE_CONTROL_EN		BIT(5)
 #define PM_RST_STATUS			0xc0
+#define PM_MISC_CONTROL			0xe4
+#define   PM_MISC_CONTROL_BLINK_BITS	0x3
+#define   PM_MISC_CONTROL_BLINK_OFF	0x0
+#define   PM_MISC_CONTROL_BLINK_25	0x1	/* 1 sec low, 3 secs high */
+#define   PM_MISC_CONTROL_BLINK_50	0x2	/* 2 secs low, 2 secs high */
+#define   PM_MISC_CONTROL_BLINK_ON	0x3
 #define PM_LPC_GATING			0xec
 #define   PM_LPC_AB_NO_BYPASS_EN	BIT(2)
 #define   PM_LPC_A20_EN			BIT(1)
@@ -256,6 +262,13 @@ enum gpp_clk_req_setting {
 	GPP_CLK_OFF,	/* GPP clk off */
 };
 
+enum fch_blink_setting {
+	FCH_BLINK_OFF = PM_MISC_CONTROL_BLINK_OFF,
+	FCH_BLINK_25 = PM_MISC_CONTROL_BLINK_25,
+	FCH_BLINK_50 = PM_MISC_CONTROL_BLINK_50,
+	FCH_BLINK_ON = PM_MISC_CONTROL_BLINK_ON,
+};
+
 typedef struct aoac_devs {
 	unsigned int :7;
 	unsigned int ic2e:1; /* 7: I2C2 */
@@ -283,6 +296,7 @@ void southbridge_final(void *chip_info);
 void southbridge_init(void *chip_info);
 void fch_pre_init(void);
 void fch_early_init(void);
+void fch_blink_rate(enum fch_blink_setting rate);
 void set_uart_legacy_config(unsigned int uart_idx, unsigned int range_idx);
 
 /* Initialize all the i2c buses that are marked with early init. */

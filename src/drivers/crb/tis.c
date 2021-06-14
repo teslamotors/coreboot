@@ -5,9 +5,12 @@
 #include <acpi/acpigen.h>
 #include <device/device.h>
 #include <drivers/intel/ptt/ptt.h>
+#include <cbmem.h>
 
 #include "tpm.h"
 #include "chip.h"
+
+#define ACPI_DSM_TPM_START_UUID	"6bbf6cab-5463-4714-b7cd-f0203c0368d4"
 
 static unsigned int tpm_is_open;
 
@@ -90,8 +93,14 @@ int tis_sendrecv(const uint8_t *sendbuf, size_t sbuf_size, uint8_t *recvbuf, siz
 	return 0;
 }
 
+static void (*crb_tpm_dsm_callbacks[])(void *) = {
+	crb_tpm_dsm_query,
+	crb_tpm_dsm_start,
+};
+
 static void crb_tpm_fill_ssdt(const struct device *dev)
 {
+	const struct cbmem_entry *ce;
 	const char *path = acpi_device_path(dev);
 	if (!path) {
 		path = "\\_SB_.TPM";
@@ -112,8 +121,18 @@ static void crb_tpm_fill_ssdt(const struct device *dev)
 	acpigen_write_name("_CRS");
 	acpigen_write_resourcetemplate_header();
 	acpigen_write_mem32fixed(1, TPM_CRB_BASE_ADDRESS, 0x5000);
+	ce = cbmem_entry_find(CBMEM_ID_TPM2_CRB);
+	if (ce)
+		acpigen_write_mem32fixed(1, (uint32_t)cbmem_entry_start(ce),
+			(uint32_t)cbmem_entry_size(ce));
 
 	acpigen_write_resourcetemplate_footer();
+
+	if (CONFIG(CRB_TPM_ACPI_START_METHOD))
+		acpigen_write_dsm(ACPI_DSM_TPM_START_UUID,
+			crb_tpm_dsm_callbacks,
+			ARRAY_SIZE(crb_tpm_dsm_callbacks),
+			NULL);
 
 	acpigen_pop_len(); /* Device */
 }

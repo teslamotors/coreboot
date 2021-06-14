@@ -143,6 +143,7 @@
 
 #define SMI_REG_SMISTS0			0x80
 #define SMI_REG_SMISTS1			0x84
+# define SMISTS1_FAKESTS0			(1 << 1)
 #define SMI_REG_SMISTS2			0x88
 #define SMI_REG_SMISTS3			0x8c
 #define SMI_REG_SMISTS4			0x90
@@ -160,6 +161,7 @@
 #define SMI_TIMER_EN				(1 << 15)
 
 #define SMI_REG_SMITRIG0		0x98
+# define SMITRG0_FAKESTS0			(1 << 25)
 # define SMITRG0_EOS				(1 << 28)
 # define SMI_TIMER_SEL				(1 << 29)
 # define SMITRG0_SMIENB				(1 << 31)
@@ -220,5 +222,7 @@ void configure_scimap(const struct sci_source *sci);
 void disable_gevent_smi(uint8_t gevent);
 void gpe_configure_sci(const struct sci_source *scis, size_t num_gpes);
 void soc_route_sci(uint8_t event);
+void reset_psp_smi(void);
+void configure_psp_smi(void);
 
 #endif /* __SOUTHBRIDGE_AMD_PI_PICASSO_SMI_H__ */

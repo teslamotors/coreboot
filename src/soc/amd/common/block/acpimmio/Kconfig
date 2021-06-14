@@ -4,3 +4,11 @@ config SOC_AMD_COMMON_BLOCK_ACPIMMIO
 	help
 	  Select this option to enable hardware blocks in the AcpiMmio
 	  address space (0xfed8xxxx).
+
+config SOC_AMD_BIOSRAM_PANIC_MSG
+	bool
+	default n
+	help
+	  Select this option to enable support to detect kernel panic
+	  messages stored in the BIOSRAM region.  Requires OS support
+	  to be useful.

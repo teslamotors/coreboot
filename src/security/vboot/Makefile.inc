@@ -22,12 +22,23 @@ VBOOT_CFLAGS_$(1) += $$(call vboot-fixup-includes,$$($(1)-c-ccopts))
 VBOOT_CFLAGS_$(1) += -I$(abspath $(obj)) -Wno-missing-prototypes
 VBOOT_CFLAGS_$(1) += -DVBOOT_DEBUG
 
+ifeq ($(CONFIG_VBOOT_DISABLE_SHA1),y)
+VBOOT_CFLAGS_$(1) += -DVB2_SUPPORT_SHA1=0
+endif
+ifeq ($(CONFIG_VBOOT_DISABLE_SHA256),y)
+VBOOT_CFLAGS_$(1) += -DVB2_SUPPORT_SHA256=0
+endif
+ifeq ($(CONFIG_VBOOT_DISABLE_SHA512),y)
+VBOOT_CFLAGS_$(1) += -DVB2_SUPPORT_SHA512=0
+endif
+
 $$(VBOOT_LIB_$(1)): $(obj)/config.h
 	printf "    MAKE       $(subst $(obj)/,,$(@))\n"
 	+FIRMWARE_ARCH=$$(ARCHDIR-$$(ARCH-$(1)-y)) \
 	CC="$$(CC_$(1))" \
 	CFLAGS="$$(VBOOT_CFLAGS_$(1))" VBOOT2="y" \
 	EC_EFS="$(CONFIG_VBOOT_EC_EFS)" \
+	VERIFY_RO="$(CONFIG_VBOOT_VERIFY_RO)" \
 	$(MAKE) -C $(VBOOT_SOURCE) \
 		BUILD=$$(abspath $$(dir $$(VBOOT_LIB_$(1)))) \
 		V=$(V) \
@@ -109,8 +120,10 @@ romstage-y += secdata_tpm.c
 ramstage-y += secdata_tpm.c
 endif
 
+ifneq ($(CONFIG_VBOOT_MOCK_TPM),y)
 ifneq ($(CONFIG_TPM1)$(CONFIG_TPM2),)
 verstage-y += tpm_common.c
+endif
 endif
 
 romstage-y += common.c
@@ -228,18 +241,24 @@ GBB_FLAGS := $(call int-add, \
 	$(call bool-to-mask,$(CONFIG_GBB_FLAG_DISABLE_FWMP),0x8000) \
 	)
 
+ifeq ($(CONFIG_VBOOT_REFUSE_RECOVERY),y)
+RECOVERY_KEY_SIZE=0
+else
+RECOVERY_KEY_SIZE=0x1000
+endif
+
 ifneq ($(CONFIG_GBB_BMPFV_FILE),)
 $(obj)/gbb.sizetmp: $(obj)/coreboot.rom
 	$(CBFSTOOL) $< read -r GBB -f $@
 
 $(obj)/gbb.stub: $(obj)/coreboot.rom $(FUTILITY) $(obj)/gbb.sizetmp
 	@printf "    CREATE GBB (with BMPFV)\n"
-	$(FUTILITY) gbb_utility -c 0x100,0x1000,$(call int-subtract,$(call file-size,$(obj)/gbb.sizetmp) 0x2180),0x1000 $@.tmp
+	$(FUTILITY) gbb_utility -c 0x100,0x1000,$(call int-subtract,$(call file-size,$(obj)/gbb.sizetmp) 0x2180),$(RECOVERY_KEY_SIZE) $@.tmp
 	mv $@.tmp $@
 else
 $(obj)/gbb.stub: $(obj)/coreboot.rom $(FUTILITY)
 	@printf "    CREATE GBB (without BMPFV)\n"
-	$(FUTILITY) gbb_utility -c 0x100,0x1000,0,0x1000 $@.tmp
+	$(FUTILITY) gbb_utility -c 0x100,0x1000,0,$(RECOVERY_KEY_SIZE) $@.tmp
 	mv $@.tmp $@
 endif
 
@@ -254,12 +273,16 @@ $(obj)/gbb.region: $(obj)/gbb.stub
 	$(FUTILITY) gbb_utility -s \
 		--hwid="$(CONFIG_GBB_HWID)" \
 		--rootkey="$(CONFIG_VBOOT_ROOT_KEY)" \
-		--recoverykey="$(CONFIG_VBOOT_RECOVERY_KEY)" \
 		--flags=$(GBB_FLAGS) \
 		$@.tmp
 ifneq ($(CONFIG_GBB_BMPFV_FILE),)
 	$(FUTILITY) gbb_utility -s \
 		--bmpfv="$(CONFIG_GBB_BMPFV_FILE)" \
+		$@.tmp
+endif
+ifneq ($(CONFIG_VBOOT_REFUSE_RECOVERY),y)
+	$(FUTILITY) gbb_utility -s \
+		--recoverykey="$(CONFIG_VBOOT_RECOVERY_KEY)" \
 		$@.tmp
 endif
 	mv $@.tmp $@

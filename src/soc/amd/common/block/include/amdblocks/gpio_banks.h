@@ -361,4 +361,6 @@ void soc_get_gpio_event_table(const struct soc_amd_event **table, size_t *items)
 /* May be implemented by soc to handle special cases */
 void soc_gpio_hook(uint8_t gpio, uint8_t mux);
 
+void gpio_dump(void);
+
 #endif /* __AMDBLOCK_GPIO_BANKS_H__ */

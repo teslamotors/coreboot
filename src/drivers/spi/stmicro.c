@@ -249,4 +249,6 @@ const struct spi_flash_vendor_info spi_flash_stmicro4_vi = {
 	.ids = flash_table_sse,
 	.nr_part_ids = ARRAY_SIZE(flash_table_sse),
 	.desc = &spi_flash_pp_0x20_sector_desc,
+	.rpmc_cmd = 0x9B,
+	.rpmc_readout_cmd = 0x96,
 };

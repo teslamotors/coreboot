@@ -1,0 +1,20 @@
+config HAVE_AMD_DGPU
+	bool
+	default n
+	help
+	  Activate if your platform has an AMD discrete graphics card.
+
+config AMD_DGPU_ATPX
+	bool
+	depends on HAVE_AMD_DGPU
+	help
+	  Select this option to provide ATPX methods via ACPI.  This is used
+	  to advertise hybrid graphics support to the OS.
+
+config AMD_DGPU_BOCO_SUPPORT
+	bool
+	select AMD_DGPU_ATPX
+	help
+	  Select this option to advertise to the OS that the mainboard is
+	  equipped with a BOCO-capable dGPU.  BOCO (Bus off, Chip off) support
+	  usually requires GPIO control for dGPU power enable inputs.

@@ -3,6 +3,7 @@
 #include <device/mmio.h>
 #include <arch/interrupt.h>
 #include <arch/registers.h>
+#include <assert.h>
 #include <boot/coreboot_tables.h>
 #include <console/console.h>
 #include <delay.h>
@@ -222,7 +223,7 @@ const vbe_mode_info_t *vbe_mode_info(void)
 
 static int vbe_check_for_failure(int ah);
 
-static void vbe_get_ctrl_info(vbe_info_block *info)
+static int vbe_get_ctrl_info(vbe_info_block *info)
 {
 	char *buffer = PTR_TO_REAL_MODE(__realmode_buffer);
 	u16 buffer_seg = (((unsigned long)buffer) >> 4) & 0xff00;
@@ -230,9 +231,13 @@ static void vbe_get_ctrl_info(vbe_info_block *info)
 	X86_EAX = realmode_interrupt(0x10, VESA_GET_INFO, 0x0000, 0x0000,
 			0x0000, buffer_seg, buffer_adr);
 	/* If the VBE function completed successfully, 0x0 is returned in AH */
-	if (X86_AH)
-		die("\nError: In %s function\n", __func__);
+	if (X86_AH) {
+		printk(BIOS_ERR, "\nError: In %s function\n", __func__);
+		BUG();
+		return -1;
+	}
 	memcpy(info, buffer, sizeof(vbe_info_block));
+	return 0;
 }
 
 static void vbe_oprom_list_supported_mode(uint16_t *video_mode_ptr)
@@ -251,7 +256,8 @@ static void vbe_oprom_supported_mode_list(void)
 	uint16_t segment, offset;
 	vbe_info_block info;
 
-	vbe_get_ctrl_info(&info);
+	if (vbe_get_ctrl_info(&info))
+		return;
 
 	offset = info.video_mode_ptr;
 	segment = info.video_mode_ptr >> 16;
@@ -281,16 +287,16 @@ static int vbe_check_for_failure(int ah)
 		status = 0;
 		break;
 	case 1:
-		printk(BIOS_DEBUG, "VBE: Function call failed!\n");
+		printk(BIOS_ERR, "VBE: Function call failed!\n");
 		status = -1;
 		break;
 	case 2:
-		printk(BIOS_DEBUG, "VBE: Function is not supported!\n");
+		printk(BIOS_ERR, "VBE: Function is not supported!\n");
 		status = -1;
 		break;
 	case 3:
 	default:
-		printk(BIOS_DEBUG, "VBE: Unsupported video mode %x!\n",
+		printk(BIOS_ERR, "VBE: Unsupported video mode %x!\n",
 			CONFIG_FRAMEBUFFER_VESA_MODE);
 		vbe_oprom_supported_mode_list();
 		status = -1;
@@ -308,8 +314,11 @@ static u8 vbe_get_mode_info(vbe_mode_info_t * mi)
 	u16 buffer_adr = ((unsigned long)buffer) & 0xffff;
 	X86_EAX = realmode_interrupt(0x10, VESA_GET_MODE_INFO, 0x0000,
 			mi->video_mode, 0x0000, buffer_seg, buffer_adr);
-	if (vbe_check_for_failure(X86_AH))
-		die("\nError: In %s function\n", __func__);
+	if (vbe_check_for_failure(X86_AH)) {
+		printk(BIOS_ERR, "\nError: In %s function\n", __func__);
+		BUG();
+		return -1;
+	}
 	memcpy(mi->mode_info_block, buffer, sizeof(mi->mode_info_block));
 	mode_info_valid = 1;
 	return 0;
@@ -324,8 +333,11 @@ static u8 vbe_set_mode(vbe_mode_info_t * mi)
 	mi->video_mode &= ~(1 << 15);
 	X86_EAX = realmode_interrupt(0x10, VESA_SET_MODE, mi->video_mode,
 			0x0000, 0x0000, 0x0000, 0x0000);
-	if (vbe_check_for_failure(X86_AH))
-		die("\nError: In %s function\n", __func__);
+	if (vbe_check_for_failure(X86_AH)) {
+		printk(BIOS_ERR, "\nError: In %s function\n", __func__);
+		BUG();
+		return -1;
+	}
 	return 0;
 }
 
@@ -335,7 +347,9 @@ static u8 vbe_set_mode(vbe_mode_info_t * mi)
 void vbe_set_graphics(void)
 {
 	mode_info.video_mode = (1 << 14) | CONFIG_FRAMEBUFFER_VESA_MODE;
-	vbe_get_mode_info(&mode_info);
+	if (vbe_get_mode_info(&mode_info))
+		return;
+
 	unsigned char *framebuffer =
 		(unsigned char *)mode_info.vesa.phys_base_ptr;
 	printk(BIOS_DEBUG, "VBE: resolution:  %dx%d@%d\n",
@@ -358,8 +372,10 @@ void vbe_textmode_console(void)
 	delay(2);
 	X86_EAX = realmode_interrupt(0x10, 0x0003, 0x0000, 0x0000,
 				0x0000, 0x0000, 0x0000);
-	if (vbe_check_for_failure(X86_AH))
-		die("\nError: In %s function\n", __func__);
+	if (vbe_check_for_failure(X86_AH)) {
+		printk(BIOS_ERR, "\nError: In %s function\n", __func__);
+		BUG();
+	}
 }
 
 int fill_lb_framebuffer(struct lb_framebuffer *framebuffer)

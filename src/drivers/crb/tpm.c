@@ -16,8 +16,10 @@
 #include <console/console.h>
 #include <device/mmio.h>
 #include <string.h>
+#include <cbmem.h>
 #include <soc/pci_devs.h>
 #include <device/pci_ops.h>
+#include <drivers/amd/ftpm/ftpm.h>
 
 #include "tpm.h"
 
@@ -81,6 +83,17 @@ static int crb_wait_for_reg32(const void *addr, uint32_t timeoutMs, uint32_t mas
  */
 static int crb_probe(void)
 {
+#if ENV_RAMSTAGE
+	/* AMD fTPM does not populate interface identifier registers */
+	if (CONFIG(HAVE_AMD_FTPM)) {
+		if (!ftpm_active()) {
+			printk(BIOS_ERR, "TPM: AMD fTPM is not active.\n");
+			return -1;
+		}
+		return 0;
+	}
+#endif
+
 	uint64_t tpmStatus = read64(CRB_REG(cur_loc, CRB_REG_INTF_ID));
 	printk(BIOS_SPEW, "Interface ID Reg. %llx\n", tpmStatus);
 
@@ -109,6 +122,9 @@ static int crb_probe(void)
  */
 static uint8_t crb_activate_locality(void)
 {
+	/* No locality support with ACPI Start Method devices */
+	if (CONFIG(CRB_TPM_ACPI_START_METHOD))
+		return 0;
 
 	uint8_t locality = (read8(CRB_REG(0, CRB_REG_LOC_STATE)) >> 2) & 0x07;
 	printk(BIOS_SPEW, "Active locality: %i\n", locality);
@@ -142,6 +158,10 @@ static uint8_t crb_activate_locality(void)
 /* Switch Device into a Ready State */
 static int crb_switch_to_ready(void)
 {
+	/* No request support with ACPI Start Method devices */
+	if (CONFIG(CRB_TPM_ACPI_START_METHOD))
+		return 0;
+
 	/* Transition into ready state */
 	write8(CRB_REG(cur_loc, CRB_REG_REQUEST), 0x1);
 	int rc = crb_wait_for_reg32(CRB_REG(cur_loc, CRB_REG_REQUEST), 200,
@@ -163,6 +183,47 @@ static int crb_switch_to_ready(void)
 	return 0;
 }
 
+#if ENV_ROMSTAGE || ENV_POSTCAR || ENV_RAMSTAGE
+/* Update the CRB command/response buffers */
+static void crb_set_buffers(void *buf, uint32_t length)
+{
+	write32(CRB_REG(cur_loc, CRB_REG_CMD_SIZE), length / 2);
+	write64(CRB_REG(cur_loc, CRB_REG_CMD_ADDR), (uintptr_t)buf);
+	write32(CRB_REG(cur_loc, CRB_REG_RESP_SIZE), length / 2);
+	write64(CRB_REG(cur_loc, CRB_REG_RESP_ADDR), (uintptr_t)buf + length / 2);
+
+	control_area.command_size = length / 2;
+	control_area.command_bfr = buf;
+	control_area.response_size = length / 2;
+	control_area.response_bfr = (void *)((uintptr_t)buf + length / 2);
+}
+
+/* Reserve memory for CRB command/response buffers */
+static int crb_alloc_buffer(void)
+{
+	void *buf;
+	const uint32_t length = CONFIG_CRB_TPM_BUFFER_SIZE;
+
+	/* Only allocate once */
+	if (cbmem_entry_find(CBMEM_ID_TPM2_CRB))
+		return 0;
+
+	buf = cbmem_add(CBMEM_ID_TPM2_CRB, length);
+	if (!buf) {
+		printk(BIOS_ERR, "TPM: CRB buffer allocation failed\n");
+		return -1;
+	}
+
+	printk(BIOS_DEBUG, "TPM: CRB buffer created at %p\n", buf);
+	memset(buf, 0, length);
+
+	/* Set command/response buffers in control area */
+	crb_set_buffers(buf, length);
+
+	return 0;
+}
+#endif
+
 /*
  * tpm2_init
  *
@@ -173,7 +234,6 @@ static int crb_switch_to_ready(void)
  */
 int tpm2_init(void)
 {
-
 	if (crb_probe()) {
 		printk(BIOS_ERR, "TPM: Probe failed.\n");
 		return -1;
@@ -181,6 +241,11 @@ int tpm2_init(void)
 
 	/* Read back control area structure */
 	crb_readControlArea();
+
+#if ENV_ROMSTAGE || ENV_POSTCAR || ENV_RAMSTAGE
+	if (CONFIG(CRB_TPM_BUFFER_ALLOC))
+		crb_alloc_buffer();
+#endif
 
 	/* Good to go. */
 	printk(BIOS_SPEW, "TPM: CRB TPM initialized successfully\n");

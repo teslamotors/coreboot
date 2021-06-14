@@ -12,6 +12,7 @@
 #include <device/device.h>
 #include <program_loading.h>
 #include <elog.h>
+#include <soc/romstage.h>
 #include <soc/acpi.h>
 #include <soc/memmap.h>
 #include <soc/mrc_cache.h>
@@ -87,6 +88,11 @@ static bool devtree_sata_dev_enabled(void)
 	return ahci_dev->enabled;
 }
 
+void __weak mainboard_romstage_entry_s3(int s3_resume)
+{
+	/* By default, don't do anything */
+}
+
 void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 {
 	FSP_M_CONFIG *mcfg = &mupd->FspmConfig;
@@ -137,6 +143,8 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 	mcfg->telemetry_vddcr_vdd_offset = config->telemetry_vddcr_vdd_offset;
 	mcfg->telemetry_vddcr_soc_slope = config->telemetry_vddcr_soc_slope;
 	mcfg->telemetry_vddcr_soc_offset = config->telemetry_vddcr_soc_offset;
+	mcfg->pspp_policy = config->pspp_policy;
+	mcfg->audio_soundwire = config->audio_io_control;
 	mcfg->hd_audio_enable = devtree_hda_dev_enabled();
 	mcfg->sata_enable = devtree_sata_dev_enabled();
 }
@@ -150,6 +158,7 @@ asmlinkage void car_stage_entry(void)
 
 	post_code(0x41);
 	s3_resume = acpi_s3_resume_allowed() && acpi_is_wakeup_s3();
+	mainboard_romstage_entry_s3(s3_resume);
 
 	post_code(0x42);
 	u32 val = cpuid_eax(1);

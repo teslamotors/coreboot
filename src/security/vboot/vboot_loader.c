@@ -61,14 +61,24 @@ void vboot_run_logic(void)
 int vboot_locate_cbfs(struct region_device *rdev)
 {
 	struct vb2_context *ctx;
+	int is_recovery;
 
 	/* Don't honor vboot results until the vboot logic has run. */
 	if (!vboot_logic_executed())
 		return -1;
 
 	ctx = vboot_get_context();
+	is_recovery = ctx->flags & VB2_CONTEXT_RECOVERY_MODE;
 
-	if (ctx->flags & VB2_CONTEXT_RECOVERY_MODE)
+	if (CONFIG(VBOOT_REFUSE_RECOVERY)) {
+		if (!is_recovery && !vboot_locate_firmware(ctx, rdev))
+			return 0;
+
+		/* die instead of informing caller to look in COREBOOT */
+		vb2ex_abort();
+	}
+
+	if (is_recovery)
 		return -1;
 
 	return vboot_locate_firmware(ctx, rdev);

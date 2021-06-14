@@ -242,9 +242,10 @@ static void check_boot_mode(struct vb2_context *ctx)
 	default:
 		printk(BIOS_ERR,
 		       "Communication error in getting Cr50 boot mode.\n");
-		if (ctx->flags & VB2_CONTEXT_RECOVERY_MODE)
-			/* Continue to boot in recovery mode */
-			return;
+		if (ctx->flags & VB2_CONTEXT_RECOVERY_MODE &&
+			!CONFIG(VBOOT_REFUSE_RECOVERY))
+				/* Continue to boot in recovery mode */
+				return;
 		vb2api_fail(ctx, VB2_RECOVERY_CR50_BOOT_MODE, rv);
 		vboot_save_data(ctx);
 		vboot_reboot();
@@ -300,7 +301,7 @@ void verstage_main(void)
 	}
 	timestamp_add_now(TS_END_TPMINIT);
 
-	if (get_recovery_mode_switch()) {
+	if (get_recovery_mode_switch() && !CONFIG(VBOOT_REFUSE_RECOVERY)) {
 		ctx->flags |= VB2_CONTEXT_FORCE_RECOVERY_MODE;
 		if (CONFIG(VBOOT_DISABLE_DEV_ON_RECOVERY))
 			ctx->flags |= VB2_CONTEXT_DISABLE_DEVELOPER_MODE;
@@ -325,18 +326,21 @@ void verstage_main(void)
 		/*
 		 * If vb2api_fw_phase1 fails, check for return value.
 		 * If it is set to VB2_ERROR_API_PHASE1_RECOVERY, then continue
-		 * into recovery mode.
-		 * For any other error code, save context if needed and reboot.
+		 * into recovery mode when enabled.
+		 * Otherwise, save context if needed and reboot.
 		 */
+		vboot_save_data(ctx);
 		if (rv == VB2_ERROR_API_PHASE1_RECOVERY) {
 			printk(BIOS_INFO, "Recovery requested (%x)\n", rv);
-			vboot_save_data(ctx);
-			extend_pcrs(ctx); /* ignore failures */
-			goto verstage_main_exit;
+			if (!CONFIG(VBOOT_REFUSE_RECOVERY)) {
+				extend_pcrs(ctx); /* ignore failures */
+				goto verstage_main_exit;
+			}
+			/* Erase nvdata if recovery disabled to do hard reboot */
+			vbnv_erase(ctx->nvdata);
 		}
 
 		printk(BIOS_INFO, "Reboot requested (%x)\n", rv);
-		vboot_save_data(ctx);
 		vboot_reboot();
 	}
 

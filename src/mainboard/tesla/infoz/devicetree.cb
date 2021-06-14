@@ -1,0 +1,349 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+chip soc/amd/picasso
+
+	# Set FADT Configuration
+	register "fadt_boot_arch" = "ACPI_FADT_LEGACY_FREE"
+	# See table 5-34 ACPI 6.3 spec
+	register "fadt_flags" = "ACPI_FADT_SLEEP_BUTTON | ACPI_FADT_SEALED_CASE"
+
+	register "acp_pin_cfg" = "I2S_PINS_I2S_TDM"
+	register "acp_i2s_wake_enable" = "0"
+	register "acp_pme_enable" = "0"
+
+	# Start : OPN Performance Configuration
+	# (Configuratin that is common for all variants)
+	# For the below fields, 0 indicates use SOC default
+
+	# PROCHOT_L de-assertion Ramp Time
+	register "prochot_l_deassertion_ramp_time" = "20" #mS
+
+	# Lower die temperature limit
+	register "thermctl_limit" = "100" #degrees C
+
+	# FP5 Processor Voltage Supply PSI Currents
+	register "psi0_current_limit" = "18000" #mA
+	register "psi0_soc_current_limit" = "12000"  #mA
+	register "vddcr_soc_voltage_margin" = "0" #mV
+	register "vddcr_vdd_voltage_margin" = "0" #mV
+
+	# VRM Limits
+	register "vrm_maximum_current_limit" = "0"  #mA
+	register "vrm_soc_maximum_current_limit" = "0"  #mA
+	register "vrm_current_limit" = "0"  #mA
+	register "vrm_soc_current_limit" = "0" #mA
+
+	# Misc SMU settings
+	register "sb_tsi_alert_comparator_mode_en" = "0"
+	register "core_dldo_bypass" = "1"
+	register "min_soc_vid_offset" = "0"
+	register "aclk_dpm0_freq_400MHz" = "0"
+
+	# PSPP Policy
+	register "pspp_policy" = "PSPP_DISABLED"
+
+	# End : OPN Performance Configuration
+
+	register "emmc_config" = "{
+		.timing = SD_EMMC_DISABLE,
+	}"
+
+	# SPI Configuration
+	register "common_config.spi_config" = "{
+		.normal_speed = SPI_SPEED_66M, /* MHz */
+		.fast_speed = SPI_SPEED_66M, /* MHz */
+		.altio_speed = SPI_SPEED_66M, /* MHz */
+		.tpm_speed = SPI_SPEED_66M, /* MHz */
+		.read_mode = SPI_READ_MODE_QUAD144,
+	}"
+
+	register "i2c_scl_reset" = "GPIO_I2C2_SCL | GPIO_I2C3_SCL"
+
+	register "irq_override" = "{
+		/* PS/2 keyboard IRQ1 override */
+		{1,	MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_HIGH},
+
+		/* PS/2 mouse IRQ12 override */
+		{12,	MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_HIGH},
+	}"
+
+	device cpu_cluster 0 on
+		device lapic 0 on end
+	end
+
+	register "i2c[2]" = "{
+		.speed = I2C_SPEED_FAST,
+		.rise_time_ns = 21,  /* 0 to 2.31 (3.3 * .7) */
+		.fall_time_ns = 76,  /* 2.31 to 0 */
+	}"
+
+	register "i2c[3]" = "{
+		.speed = I2C_SPEED_FAST,
+		.rise_time_ns = 125,  /* 0 to 1.26v (1.8 * .7) */
+		.fall_time_ns = 37,  /* 1.26v to 0 */
+		.early_init = true,
+	}"
+
+	# Audio
+	register "audio_io_control" = "AUDIO_IO_I2STDM"
+
+	# See AMD 55570-B1 Table 13: PCI Device ID Assignments.
+	device domain 0 on
+		subsystemid 0x1022 0x1510 inherit
+		device pci 0.0 on  end # Root Complex
+		device pci 0.2 on  end # IOMMU
+		device pci 1.0 on  end # Dummy Host Bridge, must be enabled
+		device pci 1.1 on      # GPP Bridge 0 - dGPU
+			chip drivers/amd/dgpu
+				register "has_power_resource" = "1"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(120)"
+				# tRST-SEQ-A
+				register "reset_delay_ms" = "100"
+				register "reset_off_delay_ms" = "0"
+				# tRAMP-DOWN
+				register "enable_off_delay_ms" = "20"
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(108)"
+				# 50ms ramp up + 100ms PERST
+				register "enable_delay_ms" = "150"
+				register "pgood_gpio" = "ACPI_GPIO_INPUT_ACTIVE_HIGH(3)"
+				device pci 0.0 on  end	# dGPU upstream bridge
+			end
+		end
+		device pci 1.2 off end # GPP Bridge 1
+		device pci 1.3 off end # GPP Bridge 2
+		device pci 1.4 off end # GPP Bridge 3
+		device pci 1.5 on  end # GPP Bridge 4 - WiFi
+		device pci 1.6 off end # GPP Bridge 5
+		device pci 1.7 on  end # GPP Bridge 6 - NVMe
+		device pci 8.0 on  end # Dummy Host Bridge, must be enabled
+		device pci 8.1 on      # Internal GPP Bridge 0 to Bus A
+			device pci 0.0 on  end # Internal GPU
+			device pci 0.1 on  end # Display HDA
+			device pci 0.2 on  end # Crypto Coprocesor
+			device pci 0.3 on      # USB 3.1
+				chip drivers/usb/acpi
+					register "desc" = ""Root Hub""
+					register "type" = "UPC_TYPE_HUB"
+					device usb 0.0 on
+						chip drivers/usb/acpi
+							device usb 3.0 off end # USB_0_DP0 / USB_0_DM0 / USB_0_TXP0 / USB_0_TXN0 / USB_0_RXP0 / USB_0_RXN0
+						end
+						chip drivers/usb/acpi
+							register "desc" = ""Front Hub""
+							register "type" = "UPC_TYPE_USB3_A"
+							device usb 3.1 on end # USB_0_DP1 / USB_0_DM1 / USB_0_TXP1 / USB_0_TXN1 / USB_0_RXP1 / USB_0_RXN1
+						end
+						chip drivers/usb/acpi
+							register "desc" = ""USB Storage""
+							register "type" = "UPC_TYPE_USB3_A"
+							device usb 3.2 on end # USB_0_DP2 / USB_0_DM2 / USB_0_TXP2 / USB_0_TXN2 / USB_0_RXP2 / USB_0_RXN2
+						end
+						chip drivers/usb/acpi
+							register "desc" = ""Cellular Modem""
+							register "type" = "UPC_TYPE_INTERNAL"
+							device usb 3.3 on end # USB_0_DP3 / USB_0_DM3 / USB_0_TXP3 / USB_0_TXN3 / USB_0_RXP3 / USB_0_RXN3
+						end
+					end
+				end
+			end
+			device pci 0.4 on       # USB 3.1
+				chip drivers/usb/acpi
+					register "desc" = ""Root Hub""
+					register "type" = "UPC_TYPE_HUB"
+					device usb 0.0 on
+						chip drivers/usb/acpi
+							register "desc" = ""Audio DSP""
+							register "type" = "UPC_TYPE_INTERNAL"
+							device usb 2.0 on end # USB_1_DP1 / USB_1_DM1
+						end
+						chip drivers/usb/acpi
+							device usb 3.0 off end # USB_1_DP0 / USB_1_DM0 / USB_1_TXP0 / USB_1_TXN0 / USB_1_RXP0 / USB_1_RXN0
+						end
+					end
+				end
+			end
+
+			device pci 0.5 on  end # Audio
+			device pci 0.6 off end # HDA
+			device pci 0.7 on      # non-Sensor Fusion Hub device
+				chip drivers/i2c/mp2
+					register "name" = ""I2C0""
+					register "desc" = ""AMD MP2 I2C Bus 0""
+					register "uid" = "0"
+					device generic 0 on
+						# Board temperature sensors
+						chip drivers/i2c/generic
+							register "hid" = ""PRP0001""
+							register "desc" = ""Temperature Sensor: Board SoC""
+							register "uid" = "13004"
+							register "compat_string" = ""ti,tmp75b""
+							device i2c 48 on end
+						end
+						chip drivers/i2c/generic
+							register "hid" = ""PRP0001""
+							register "desc" = ""Temperature Sensor: WiFi module""
+							register "uid" = "13007"
+							register "compat_string" = ""ti,tmp75b""
+							device i2c 49 on end
+						end
+
+						# dGPU temperature sensors
+						chip drivers/i2c/generic
+							register "hid" = ""PRP0001""
+							register "desc" = ""Temperature Sensor: dGPU differential""
+							register "uid" = "1015"
+							register "compat_string" = ""ti,tmp451""
+							device i2c 4c on end
+						end
+						chip drivers/i2c/generic
+							register "hid" = ""PRP0001""
+							register "desc" = ""Temperature Sensor: dGPU A""
+							register "uid" = "1010"
+							register "compat_string" = ""ti,tmp75b""
+							device i2c 4d on end
+						end
+						chip drivers/i2c/generic
+							register "hid" = ""PRP0001""
+							register "desc" = ""Temperature Sensor: dGPU B""
+							register "uid" = "1012"
+							register "compat_string" = ""ti,tmp75b""
+							device i2c 4f on end
+						end
+
+						# GPIO expanders
+						chip drivers/i2c/generic
+							register "hid" = ""PI4IO16""
+							register "cid" = ""PI4IO16""
+							register "desc" = ""GPIO Expander: Audio/LTE""
+							register "uid" = "5014"
+							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(10)"
+							register "has_power_resource" = "1"
+							# reset_gpio may be rewritten at runtime
+							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
+							register "reset_delay_ms" = "1"
+							register "reset_off_delay_ms" = "1"
+							register "disable_gpio_export_in_crs" = "1"
+							device i2c 20 on end
+						end
+						chip drivers/i2c/generic
+							register "hid" = ""PI4IO16""
+							register "cid" = ""PI4IO16""
+							register "desc" = ""GPIO Expander: WLAN/BT/LTE/USB/BOARD-ID""
+							register "uid" = "5013"
+							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(29)"
+							register "has_power_resource" = "1"
+							# reset_gpio may be rewritten at runtime
+							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
+							register "reset_delay_ms" = "1"
+							register "reset_off_delay_ms" = "1"
+							register "disable_gpio_export_in_crs" = "1"
+							device i2c 21 on end
+						end
+					end
+				end
+
+				chip drivers/i2c/mp2
+					register "name" = ""I2C1""
+					register "desc" = ""AMD MP2 I2C Bus 1""
+					register "uid" = "1"
+					device generic 1 on
+						chip drivers/i2c/generic
+							register "hid" = ""PI4IO16""
+							register "cid" = ""PI4IO16""
+							register "desc" = ""GPIO Expander: Displays""
+							register "uid" = "5011"
+							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(31)"
+							register "has_power_resource" = "1"
+							# reset_gpio may be rewritten at runtime
+							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
+							register "reset_delay_ms" = "1"
+							register "reset_off_delay_ms" = "1"
+							register "disable_gpio_export_in_crs" = "1"
+							device i2c 20 on end
+						end
+					end
+				end
+			end
+		end
+		device pci 8.2 on      # Internal GPP Bridge 0 to Bus B
+			device pci 0.0 on  end # AHCI: Unused but keeping func 0 on
+			device pci 0.1 on  end # XGBE
+		end
+		device pci 14.0 on end  # SMBus
+		device pci 14.3 on end  # LPC Bridge
+		device pci 14.6 off end # Non-functional SDHCI
+		device pci 18.0 on  end # Data fabric [0-7]
+		device pci 18.1 on  end
+		device pci 18.2 on  end
+		device pci 18.3 on  end
+		device pci 18.4 on  end
+		device pci 18.5 on  end
+		device pci 18.6 on  end
+	end # domain
+
+	chip drivers/crb
+		device mmio 0xfd110500 on end
+	end # chip drivers/crb
+
+	device mmio 0xfedc4000 on
+		chip drivers/i2c/generic
+			register "hid" = ""SIW42103""
+			register "cid" = ""SIW42103""
+			register "desc" = ""Touch Device: Center Display""
+			register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[0].name" = ""irq-gpio""
+			register "property_list[0].integer" = "270"
+			register "property_list[1].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[1].name" = ""reset-gpio""
+			register "property_list[1].integer" = "323"
+			register "property_list[2].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[2].name" = ""max_x""
+			register "property_list[2].integer" = "2200"
+			register "property_list[3].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[3].name" = ""max_y""
+			register "property_list[3].integer" = "1300"
+			register "property_list[4].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[4].name" = ""chip_flags""
+			register "property_list[4].integer" = "0x000f"
+			register "property_count" = "5"
+			register "speed" = "I2C_SPEED_STANDARD"
+			device i2c 28 on end
+		end
+		chip drivers/i2c/generic
+			register "hid" = ""GTWMFD00""
+			register "cid" = ""GTWMFD00""
+			register "desc" = ""Gateway Control Bridge""
+			register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[0].name" = ""i2c-bus-status"" # irq is not on mainboard.
+			register "property_list[0].integer" = "251"
+			register "property_count" = "1"
+			register "speed" = "I2C_SPEED_STANDARD"
+			device i2c 11 on end
+		end
+	end
+
+	device mmio 0xfedc5000 on
+		chip drivers/i2c/generic
+			register "hid" = ""SIW17700""
+			register "cid" = ""SIW17700""
+			register "desc" = ""Touch Device: Rear Display""
+			register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[0].name" = ""irq-gpio""
+			register "property_list[0].integer" = "395"
+			register "property_list[1].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[1].name" = ""reset-gpio""
+			# may be rewritten at runtime
+			register "property_list[1].integer" = "278"
+			register "property_list[2].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[2].name" = ""max_x""
+			register "property_list[2].integer" = "1280"
+			register "property_list[3].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[3].name" = ""max_y""
+			register "property_list[3].integer" = "720"
+			register "property_list[4].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[4].name" = ""chip_flags""
+			register "property_list[4].integer" = "0x000f"
+			register "property_count" = "5"
+			device i2c 28 on end
+		end
+	end
+end	# chip soc/amd/picasso

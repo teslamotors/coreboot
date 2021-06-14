@@ -433,6 +433,13 @@ config AMD_FWM_POSITION_INDEX
 	    4: 8 MB   - 0xFF820000
 	    5: 16 MB  - 0xFF020000
 
+config AMD_FW_UNCOMPRESSED_BIOS_BIN
+	bool
+	default n
+	help
+	  Do not compress the bios binary before adding it to the
+	  PSP directory table.
+
 comment "AMD Firmware Directory Table set to location for 512KB ROM"
 	depends on AMD_FWM_POSITION_INDEX = 0
 comment "AMD Firmware Directory Table set to location for 1MB ROM"
@@ -526,6 +533,39 @@ config PSP_VERSTAGE_SIGNING_TOKEN
 	default ""
 	help
 	  Add psp_verstage signature token to the build & PSP Directory Table
+
+config PSP_PLATFORM_SECURE_BOOT
+	bool "Platform secure boot enable"
+	default n
+	help
+	  Select this item to enable PSP Platform Secure Boot.
+
+	  Platform Secure Boot will automatically be fused on boot if the
+	  coreboot ROM is properly signed and cannot be disabled once fused.
+
+config PSP_RPMC_ROOT_KEY_PROVISIONING
+	bool "RPMC root key provisioning"
+	default n
+	help
+	  Select this item to enable PSP SPI RPMC root key provisioning.
+
+	  RPMC root key will automatically be fused on boot if the SPI ROM
+	  supports RPMC.
+
+if PSP_RPMC_ROOT_KEY_PROVISIONING
+
+config PSP_RPMC_ROOT_KEY_ADDRESS
+	int "RPMC counter address (1 to 3)"
+	range 1 3
+	default 1
+	help
+	  RPMC counter number to provisioning.
+
+endif # PSP_RPMC_ROOT_KEY_PROVISIONING
+
+config BIOS_PUBKEY_FILE
+	string
+	default "3rdparty/amd_blobs/picasso/PSP/BiosPubKeyRV.bin"
 
 endmenu
 

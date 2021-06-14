@@ -10,6 +10,9 @@
 #define BIOSRAM_CBMEM_TOP		0xf0 /* 4 bytes */
 #define BIOSRAM_UMA_SIZE		0xf4 /* 4 bytes */
 #define BIOSRAM_UMA_BASE		0xf8 /* 8 bytes */
+#define BIOSRAM_KP_MARKER		0x00 /* 4 bytes */
+#define BIOSRAM_KP_MSG			0x04 /* NULL-terminated string */
+#define BIOSRAM_KP_MSG_SIZE		156  /* Max bytes of KP_MSG */
 
 static uint8_t biosram_read8(uint8_t reg)
 {
@@ -91,3 +94,53 @@ uint64_t get_uma_base(void)
 	base |= ((uint64_t)(biosram_read32(BIOSRAM_UMA_BASE + 4)) << 32);
 	return base;
 }
+
+#if CONFIG(SOC_AMD_BIOSRAM_PANIC_MSG)
+#include <console/console.h>
+#include <ctype.h>
+/* Magic marker at beginning of BIOSRAM region */
+#define	BIOSRAM_KP_MSG_MAGIC	0x504b0ff0	/* 0xf0 0x0f 'K' 'P' */
+
+int panic_detected(void)
+{
+	return biosram_read32(BIOSRAM_KP_MARKER) == BIOSRAM_KP_MSG_MAGIC;
+}
+
+void panic_msg_copy(char *dest, int max_len)
+{
+	int i = BIOSRAM_KP_MSG;
+	int n = 0;
+	char c;
+
+	max_len = MIN(max_len, BIOSRAM_KP_MSG_SIZE);
+
+	while (n < max_len) {
+		c = biosram_read8(i++);
+		dest[n++] = c;
+		if (c == '\0')
+			break;
+	}
+	dest[max_len-1] = '\0';
+}
+
+void panic_msg_print(int loglevel)
+{
+	int i = BIOSRAM_KP_MSG;
+	int n = 0;
+	char c;
+
+	while (n < BIOSRAM_KP_MSG_SIZE) {
+		c = biosram_read8(i++);
+		if (c == '\0')
+			break;
+
+		printk(loglevel, "%c", isprint(c) ? c : '.');
+		n++;
+	}
+}
+
+void panic_msg_clear(void)
+{
+	biosram_write8(BIOSRAM_KP_MARKER, 0xaa);
+}
+#endif

@@ -97,6 +97,8 @@ struct spi_flash_vendor_info {
 	uint16_t match_id_mask[2]; /* matching bytes of the id for this set*/
 	const struct spi_flash_ops_descriptor *desc;
 	const struct spi_flash_protection_ops *prot_ops;
+	uint8_t rpmc_cmd; /* Replay Protected Monotonic Counter command. */
+	uint8_t rpmc_readout_cmd;
 	/* Returns 0 on success. !0 otherwise. */
 	int (*after_probe)(const struct spi_flash *flash);
 };

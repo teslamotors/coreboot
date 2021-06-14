@@ -1222,6 +1222,14 @@ void acpigen_write_sleep(uint64_t sleep_ms)
 	acpigen_write_integer(sleep_ms);
 }
 
+/* Stall (us) - for short ( <= 100us ) durations only */
+void acpigen_write_stall(unsigned int stall_us)
+{
+	assert(stall_us <= ACPI_STALL_MAX_US);
+	acpigen_emit_ext_op(STALL_OP);
+	acpigen_write_integer(stall_us);
+}
+
 void acpigen_write_store(void)
 {
 	acpigen_emit_byte(STORE_OP);

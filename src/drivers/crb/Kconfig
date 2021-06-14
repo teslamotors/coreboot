@@ -15,3 +15,21 @@ config MAINBOARD_HAS_CRB_TPM
 	select CRB_TPM
 	help
 	  Mainboard has Command Response Buffer support
+
+config CRB_TPM_BUFFER_ALLOC
+	bool
+	default n
+	help
+	  Allocate and reserve memory for the CRB command/response buffer
+
+config CRB_TPM_BUFFER_SIZE
+	hex
+	default 0x8000
+	help
+	  Allocation size for the CRB command/response buffer
+
+config CRB_TPM_ACPI_START_METHOD
+	bool
+	default n
+	help
+	  Use TPM2 ACPI Start Method

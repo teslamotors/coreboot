@@ -148,6 +148,34 @@ config SPI_FLASH_STMICRO
 	  Select this option if your chipset driver needs to store certain
 	  data in the SPI flash and your SPI flash is made by ST MICRO.
 
+config SPI_FLASH_STMICRO_SE32K
+	bool
+	default y if SPI_FLASH_STMICRO
+	help
+	  Select this option if your chipset driver needs to store certain
+	  data in the SPI flash and your SPI flash is ST MICRO M25P10.
+
+config SPI_FLASH_STMICRO_SE64K
+	bool
+	default y if SPI_FLASH_STMICRO
+	help
+	  Select this option if your chipset driver needs to store certain
+	  data in the SPI flash and your SPI flash is ST MICRO M25P.
+
+config SPI_FLASH_STMICRO_SE256K
+	bool
+	default y if SPI_FLASH_STMICRO
+	help
+	  Select this option if your chipset driver needs to store certain
+	  data in the SPI flash and your SPI flash is ST MICRO M25P128.
+
+config SPI_FLASH_STMICRO_SSE
+	bool
+	default y if SPI_FLASH_STMICRO
+	help
+	  Select this option if your chipset driver needs to store certain
+	  data in the SPI flash and your SPI flash is ST MICRO N25Q.
+
 config SPI_FLASH_WINBOND
 	bool
 	default y if SPI_FLASH_INCLUDE_ALL_DRIVERS

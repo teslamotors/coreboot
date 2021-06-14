@@ -9,12 +9,10 @@
 #include <console/console.h>
 #include <amdblocks/psp.h>
 #include <soc/iomap.h>
+#include <soc/smi.h>
 #include <string.h>
 
 #include "psp_def.h"
-
-#define C2P_BUFFER_MAXSIZE 0xc00 /* Core-to-PSP buffer */
-#define P2C_BUFFER_MAXSIZE 0xc00 /* PSP-to-core buffer */
 
 struct {
 	u8 buffer[C2P_BUFFER_MAXSIZE];
@@ -61,6 +59,11 @@ int psp_notify_smm(void)
 	soc_fill_smm_trig_info(&buffer.req.smm_trig_info);
 #if (CONFIG(SOC_AMD_COMMON_BLOCK_PSP_GEN2))
 	soc_fill_smm_reg_info(&buffer.req.smm_reg_info);
+#endif
+
+#if (CONFIG(SOC_AMD_COMMON_BLOCK_PSP_SMI))
+	configure_psp_smi();
+	enable_psp_smi(p2c_buffer.buffer);
 #endif
 
 	printk(BIOS_DEBUG, "PSP: Notify SMM info... ");

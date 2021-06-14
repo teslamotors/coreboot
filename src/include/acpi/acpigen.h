@@ -281,6 +281,9 @@ struct cppc_config {
 	acpi_addr_t regs[CPPC_MAX_FIELDS_VER_3];
 };
 
+/* Per spec, delays longer than 100us must use Sleep() instead of Stall() */
+#define ACPI_STALL_MAX_US		100
+
 void acpigen_write_return_integer(uint64_t arg);
 void acpigen_write_return_string(const char *arg);
 void acpigen_write_len_f(void);
@@ -360,6 +363,7 @@ void acpigen_write_uuid(const char *uuid);
 void acpigen_write_power_res(const char *name, uint8_t level, uint16_t order,
 			     const char * const dev_states[], size_t dev_states_count);
 void acpigen_write_sleep(uint64_t sleep_ms);
+void acpigen_write_stall(unsigned int stall_us);
 void acpigen_write_store(void);
 void acpigen_write_store_int_to_namestr(uint64_t src, const char *dst);
 void acpigen_write_store_int_to_op(uint64_t src, uint8_t dst);

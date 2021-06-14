@@ -54,7 +54,17 @@ void soc_fill_smm_reg_info(struct smm_register_info *reg); /* v2 only */
 
 int psp_notify_dram(void);
 
+int psp_get_caps(u32 *caps);
+
+int psp_get_caps_v2(u32 *caps);
+
+int psp_get_hsti_state(u32 *state);
+
+int psp_get_oem_state(u8 *state);
+
 int psp_notify_smm(void);
+
+void psp_smi_handler(void);
 
 /*
  * type: identical to the corresponding PSP command, e.g. pass
@@ -73,5 +83,13 @@ enum psp_blob_type {
 void psp_notify_sx_info(u8 sleep_type);
 
 int psp_load_named_blob(enum psp_blob_type type, const char *name);
+
+struct psb_fuse_config {
+	u32 config;
+	u16 bios_key_rev_id;
+	u8 root_key_hash[32];
+} __packed;
+
+int psp_get_psb_fuse_config(struct psb_fuse_config *cfg);
 
 #endif /* __AMD_PSP_H__ */

@@ -12,6 +12,18 @@
 #define SPI_OPCODE_WREN 0x06
 #define SPI_OPCODE_FAST_READ 0x0b
 
+/* SPI RPMC lengths */
+#define SPI_RPMC_TAG_LEN 12
+#define SPI_RPMC_SIG_LEN 32
+
+/* SPI RPMC status */
+#define SPI_FLASH_RPMC_SUCCESS			BIT(7)
+#define SPI_FLASH_RPMC_ERR_FATAL		BIT(5)
+#define SPI_FLASH_RPMC_ERR_BAD_COUNTER		BIT(4)
+#define SPI_FLASH_RPMC_ERR_UNINITIALIZED	BIT(3)
+#define SPI_FLASH_RPMC_ERR_INVALID		BIT(2)
+#define SPI_FLASH_RPMC_ERR_OTHER		BIT(1)
+
 struct spi_flash;
 
 /*
@@ -98,6 +110,8 @@ struct spi_flash {
 	u8 status_cmd;
 	u8 pp_cmd; /* Page program command. */
 	u8 wren_cmd; /* Write Enable command. */
+	u8 rpmc_cmd; /* Replay Protected Monotonic Counter command. */
+	u8 rpmc_readout_cmd;
 	const struct spi_flash_ops *ops;
 	/* If !NULL all protection callbacks exist. */
 	const struct spi_flash_protection_ops *prot_ops;
@@ -224,5 +238,29 @@ int spi_flash_vector_helper(const struct spi_slave *slave,
 	struct spi_op vectors[], size_t count,
 	int (*func)(const struct spi_slave *slave, const void *dout,
 		    size_t bytesout, void *din, size_t bytesin));
+
+/*
+ * Initialize replay protected monotonic counter HMAC key, if available.
+ *
+ * Returns -1 on failure, greater than 0 on RPMC error, and 0 on success.
+ */
+int spi_flash_rpmc_init(const struct spi_flash *flash, u8 counter_addr,
+			u32 key_data, const void *sig);
+
+/*
+ * Increment replay protected monotonic counter value, if available.
+ *
+ * Returns -1 on failure, greater than 0 on RPMC error, and 0 on success.
+ */
+int spi_flash_rpmc_increment(const struct spi_flash *flash, u8 counter_addr,
+			     u32 counter_data, const u8 *tag, const void *sig);
+
+/*
+ * Read replay protected monotonic counter value, if available.
+ *
+ * Returns -1 on failure, greater than 0 on RPMC error, and 0 on success.
+ */
+int spi_flash_rpmc_request(const struct spi_flash *flash, u8 counter_addr,
+			   const u8 *tag, const void *sig, u32 *counter_data);
 
 #endif /* _SPI_FLASH_H_ */

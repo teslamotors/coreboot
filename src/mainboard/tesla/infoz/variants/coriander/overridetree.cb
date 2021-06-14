@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+chip soc/amd/picasso
+
+	# Start : OPN Performance Configuration
+	# See devhub #55593 Chapter 3.2 for documentation
+	# For the below fields, 0 indicates use SOC default
+
+	# System config index (54W)
+	register "system_config" = "9"
+
+	# Set STAPM confiuration. All of these fields must be set >0 to take affect
+	register "slow_ppt_limit" = "54000" #mw
+	register "fast_ppt_limit" = "64800" #mw
+	register "slow_ppt_time_constant" = "0" #second
+	register "stapm_time_constant" = "0" #second
+	register "sustained_power_limit" = "0" #mw
+
+	register "telemetry_vddcr_vdd_slope" = "132000" #mA
+	register "telemetry_vddcr_vdd_offset" = "0"
+	register "telemetry_vddcr_soc_slope" = "25000" #mA
+	register "telemetry_vddcr_soc_offset" = "0"
+
+	# End : OPN Performance Configuration
+
+	device domain 0 on
+		subsystemid 0x1022 0x1510 inherit
+	end # domain
+
+end	# chip soc/amd/picasso

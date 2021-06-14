@@ -1,0 +1,17 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+if VENDOR_TESLA
+
+choice
+	prompt "Mainboard model"
+
+source "src/mainboard/tesla/*/Kconfig.name"
+
+endchoice
+
+source "src/mainboard/tesla/*/Kconfig"
+
+config MAINBOARD_VENDOR
+	default "Tesla"
+
+endif # VENDOR_TESLA

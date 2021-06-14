@@ -496,6 +496,23 @@ void pciexp_scan_bridge(struct device *dev)
 	pciexp_enable_ltr(dev);
 }
 
+/*
+ * Return PCIe type of @dev: PCI_EXP_TYPE_xxx or -1 on error
+ */
+int pciexp_type(struct device *dev)
+{
+	unsigned int pcie_pos;
+	uint16_t flags;
+	pcie_pos = pci_find_capability(dev, PCI_CAP_ID_PCIE);
+
+	if (!pcie_pos)
+		return -1;
+
+	flags = pci_read_config16(dev, pcie_pos + PCI_EXP_FLAGS);
+
+	return (flags & PCI_EXP_FLAGS_TYPE) >> 4;
+}
+
 /** Default device operations for PCI Express bridges */
 static struct pci_operations pciexp_bus_ops_pci = {
 	.set_subsystem = 0,

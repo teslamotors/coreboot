@@ -24,7 +24,7 @@ uint8_t smbios_bus_width_to_spd_width(uint16_t total_width, uint16_t data_width)
 		out = MEMORY_BUS_WIDTH_8;
 		break;
 	default:
-		printk(BIOS_NOTICE, "Unknown memory size %hu", data_width);
+		printk(BIOS_NOTICE, "Unknown memory size %hu\n", data_width);
 		/*
 		 * The SMBIOS spec says we should set 0xFFFF on an unknown
 		 * value, but we don't have a way of passing that signal via SPD
@@ -44,7 +44,7 @@ uint8_t smbios_bus_width_to_spd_width(uint16_t total_width, uint16_t data_width)
 		/* No extension bits */
 		break;
 	default:
-		printk(BIOS_NOTICE, "Unknown number of extension bits %hu",
+		printk(BIOS_NOTICE, "Unknown number of extension bits %hu\n",
 		       extension_bits);
 		break;
 	}

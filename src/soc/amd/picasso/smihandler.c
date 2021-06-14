@@ -229,7 +229,10 @@ int southbridge_io_trap_handler(int smif)
  */
 static const struct smi_sources_t smi_sources[] = {
 	{ .type = SMITYPE_SMI_CMD_PORT, .handler = sb_apmc_smi_handler },
-	{ .type = SMITYPE_SLP_TYP, .handler = sb_slp_typ_handler},
+	{ .type = SMITYPE_SLP_TYP, .handler = sb_slp_typ_handler },
+#if (CONFIG(SOC_AMD_COMMON_BLOCK_PSP_SMI))
+	{ .type = SMITYPE_PSP, .handler = psp_smi_handler },
+#endif
 };
 
 static void process_smi_sci(void)

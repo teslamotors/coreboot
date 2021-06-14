@@ -1,7 +1,8 @@
 config TPM_INIT
 	bool
 	default y if TPM1 || TPM2
-	depends on !VBOOT
+	depends on !VBOOT || VBOOT_MOCK_TPM
 	help
-	  This driver automatically initializes the TPM if vboot is not used.
+	  This driver automatically initializes the TPM if vboot is
+	  not used, or it mocks the TPM hooks and skips initialization.
 	  The TPM driver init is done during the ramstage chip init phase.

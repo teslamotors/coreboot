@@ -76,13 +76,7 @@ void vbnv_init_cmos(uint8_t *vbnv_copy)
 	/* In the case of CMOS failure force the backup. If backup wasn't used
 	   force the vbnv CMOS to be reset. */
 	if (!restore_from_backup(vbnv_copy)) {
-		vbnv_reset(vbnv_copy);
-		/* This parallels the vboot_reference implementation. */
-		vbnv_copy[HEADER_OFFSET] = HEADER_SIGNATURE |
-			HEADER_FIRMWARE_SETTINGS_RESET |
-			HEADER_KERNEL_SETTINGS_RESET;
-		regen_vbnv_crc(vbnv_copy);
-		save_vbnv_cmos(vbnv_copy);
+		vbnv_erase(vbnv_copy);
 	}
 }
 

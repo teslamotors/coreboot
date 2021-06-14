@@ -57,6 +57,9 @@ struct tpm2_info {
 	uint16_t revision;
 };
 
+void crb_tpm_dsm_query(void *arg);
+void crb_tpm_dsm_start(void *arg);
+
 int tpm2_init(void);
 void tpm2_get_info(struct tpm2_info *tpm2_info);
 size_t tpm2_process_command(const void *tpm2_command, size_t command_size,

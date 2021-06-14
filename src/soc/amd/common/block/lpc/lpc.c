@@ -25,12 +25,14 @@
 /* Most systems should have already enabled the bridge */
 void __weak soc_late_lpc_bridge_enable(void) { }
 
-static void setup_serirq(void)
+static void setup_serirq(int enable)
 {
-	u8 byte;
+	u8 byte = 0;
 
-	/* Set up SERIRQ, enable continuous mode */
-	byte = (PM_SERIRQ_NUM_BITS_21 | PM_SERIRQ_ENABLE);
+	if (enable)
+		byte |= (PM_SERIRQ_NUM_BITS_21 | PM_SERIRQ_ENABLE);
+
+	/* enable continuous mode */
 	if (!CONFIG(SERIRQ_CONTINUOUS_MODE))
 		byte |= PM_SERIRQ_MODE;
 
@@ -93,8 +95,7 @@ static void lpc_init(struct device *dev)
 	/* Initialize i8254 timers */
 	setup_i8254();
 
-	if (!CONFIG(SOC_AMD_COMMON_BLOCK_USE_ESPI))
-		setup_serirq();
+	setup_serirq(!CONFIG(SOC_AMD_DISABLE_SERIRQ));
 }
 
 static void lpc_read_resources(struct device *dev)

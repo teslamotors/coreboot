@@ -26,4 +26,16 @@ uint32_t get_uma_size(void);
 /* Returns the saved UMA base */
 uint64_t get_uma_base(void);
 
+#if CONFIG(SOC_AMD_BIOSRAM_PANIC_MSG)
+int panic_detected(void);
+void panic_msg_copy(char *dest, int max_len);
+void panic_msg_print(int loglevel);
+void panic_msg_clear(void);
+#else
+static inline int panic_detected(void) { return 0; }
+static inline void panic_msg_copy(char *dest, int max_len) {};
+static inline void panic_msg_print(int loglevel) {};
+static inline void panic_msg_clear(void) {};
+#endif
+
 #endif

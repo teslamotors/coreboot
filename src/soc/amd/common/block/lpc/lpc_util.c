@@ -366,3 +366,43 @@ void lpc_early_init(void)
 	lpc_disable_decodes();
 	lpc_set_spibase(SPI_BASE_ADDRESS);
 }
+
+void lpc_disable_ldrq0(void)
+{
+	uint32_t val;
+
+	val = pci_read_config32(_LPCB_DEV, LPC_MISC_CONTROL_BITS);
+
+	val &= ~(LPC_LDRQ0 | LPC_LDRQ0_PU_EN);
+	val |= LPC_LDRQ0_PD_EN;
+
+	pci_write_config32(_LPCB_DEV, LPC_MISC_CONTROL_BITS, val);
+}
+
+/*
+ * Disable LPCCLK1 and use as GPIO pin.
+ *     @out_en: If 1, set pin as output
+ *     @out_val: If pin is output, set initial output value
+ */
+void lpc_disable_clk1(int out_en, int out_val)
+{
+	uint32_t val;
+
+	val = pci_read_config32(_LPCB_DEV, LPC_TRUSTED_PLATFORM_MODULE);
+
+	val |= LPC_CLK1_IS_GPIO;
+	val &= ~(LPC_CLK1_OUT_VALUE | LPC_CLK1_GPIO_INPUT);
+
+	if (out_val)
+		val |= LPC_CLK1_OUT_VALUE;
+
+	if (!out_en)
+		val |= LPC_CLK1_GPIO_INPUT;
+
+	pci_write_config32(_LPCB_DEV, LPC_TRUSTED_PLATFORM_MODULE, val);
+
+	val = pci_read_config32(_LPCB_DEV, LPC_CLK_CNTRL);
+	val |= LPC_CLK1_OVRID;
+	val &= ~LPC_CLK1_EN;
+	pci_write_config32(_LPCB_DEV, LPC_CLK_CNTRL, val);
+}

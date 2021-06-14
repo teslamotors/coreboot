@@ -122,3 +122,26 @@ uint16_t pm_acpi_smi_cmd_port(void)
 {
 	return pm_read16(PM_ACPI_SMI_CMD);
 }
+
+static void clear_psp_smi(void)
+{
+	uint32_t reg32;
+	reg32 = smi_read32(SMI_REG_SMISTS1);
+	reg32 |= SMISTS1_FAKESTS0;
+	smi_write32(SMI_REG_SMISTS1, reg32);
+}
+
+void reset_psp_smi(void)
+{
+	uint32_t reg32;
+	reg32 = smi_read32(SMI_REG_SMITRIG0);
+	reg32 &= ~SMITRG0_FAKESTS0;
+	smi_write32(SMI_REG_SMITRIG0, reg32);
+}
+
+void configure_psp_smi(void)
+{
+	clear_psp_smi();
+	reset_psp_smi();
+	configure_smi(SMITYPE_PSP, SMI_MODE_SMI);
+}

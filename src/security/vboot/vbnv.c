@@ -31,6 +31,17 @@ void vbnv_reset(uint8_t *vbnv_copy)
 	memset(vbnv_copy, 0, VBOOT_VBNV_BLOCK_SIZE);
 }
 
+void vbnv_erase(uint8_t *vbnv_copy)
+{
+	vbnv_reset(vbnv_copy);
+	/* This parallels the vboot_reference implementation. */
+	vbnv_copy[HEADER_OFFSET] = HEADER_SIGNATURE |
+		HEADER_FIRMWARE_SETTINGS_RESET |
+		HEADER_KERNEL_SETTINGS_RESET;
+	regen_vbnv_crc(vbnv_copy);
+	save_vbnv(vbnv_copy);
+}
+
 /* Read VBNV data into cache. */
 static void vbnv_setup(void)
 {

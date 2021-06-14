@@ -105,9 +105,16 @@
 #define   LPC_ALT_WIDEIO0_ENABLE	BIT(0)
 
 #define LPC_MISC_CONTROL_BITS		0x78
+#define   LPC_LDRQ0_PD_EN		BIT(10)
+#define   LPC_LDRQ0_PU_EN		BIT(9)
+#define   LPC_LDRQ0			BIT(2)
 #define   LPC_NOHOG			BIT(0)
 
 #define LPC_TRUSTED_PLATFORM_MODULE	0x7c
+#define   LPC_CLK1_IS_GPIO		BIT(11)
+#define   LPC_CLK1_OUT_VALUE		BIT(10)
+#define   LPC_CLK1_GPIO_INPUT		BIT(9)
+#define   LPC_CLK1_STATUS		BIT(8)
 #define   TPM_12_EN			BIT(0)
 #define   TPM_LEGACY_EN			BIT(2)
 
@@ -133,6 +140,12 @@
 #define   PREFETCH_EN_SPI_FROM_HOST	BIT(0)
 #define   T_START_ENH			BIT(3)
 
+#define LPC_CLK_CNTRL			0xd0
+#define   LPC_CLK1_OVRID		BIT(22)
+#define   LPC_CLK0_OVRID		BIT(21)
+#define   LPC_CLK1_EN			BIT(14)
+#define   LPC_CLK0_EN			BIT(13)
+
 /* Clear all decoding to the LPC bus and erase any range registers associated
  * with the enable bits. */
 void lpc_disable_decodes(void);
@@ -149,6 +162,8 @@ void lpc_tpm_decode_spi(void);
 void lpc_enable_rom(void);
 void lpc_enable_spi_prefetch(void);
 void lpc_disable_spi_rom_sharing(void);
+void lpc_disable_ldrq0(void);
+void lpc_disable_clk1(int out_en, int out_val);
 
 /**
  * @brief Find the size of a particular wide IO

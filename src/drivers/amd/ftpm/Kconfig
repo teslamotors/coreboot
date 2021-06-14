@@ -1,0 +1,10 @@
+config HAVE_AMD_FTPM
+	bool
+	default n
+	depends on SOC_AMD_COMMON
+	select MAINBOARD_HAS_CRB_TPM
+	select CRB_TPM_BUFFER_ALLOC
+	select CRB_TPM_ACPI_START_METHOD
+	select SOC_AMD_COMMON_BLOCK_PSP_SMI
+	help
+	  Activate if your platform has an AMD PSP fTPM and you want to use it.

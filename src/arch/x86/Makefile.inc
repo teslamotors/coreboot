@@ -142,7 +142,9 @@ verstage-$(CONFIG_COLLECT_TIMESTAMPS_TSC) += timestamp.c
 
 verstage-libs ?=
 
+ifeq ($(CONFIG_VBOOT_SEPARATE_VERSTAGE),y)
 $(eval $(call early_x86_assembly_entry_rule,verstage))
+endif
 
 ifeq ($(CONFIG_ARCH_VERSTAGE_X86_32),y)
 $(eval $(call early_x86_stage,verstage,elf32-i386))

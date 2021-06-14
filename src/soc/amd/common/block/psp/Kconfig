@@ -20,6 +20,13 @@ config SOC_AMD_COMMON_BLOCK_PSP_GEN2
 	help
 	  Used by the PSP in AMD fam17h CPUs and possibly newer ones.
 
+config SOC_AMD_COMMON_BLOCK_PSP_SMI
+	bool
+	default n
+	select SPI_FLASH_SMM if BOOT_DEVICE_SPI_FLASH_RW_NOMMAP
+	help
+	  Enable PSP SMI for SPI flash read/write/erase to PSP NVRAM.
+
 config SOC_AMD_PSP_SELECTABLE_SMU_FW
 	bool
 	default n

@@ -173,6 +173,8 @@ static void usage(void)
 	printf("-k | --rtmpubkey <FILE>        Add rtmpubkey\n");
 	printf("-c | --secureos <FILE>         Add secureos\n");
 	printf("-n | --nvram <FILE>            Add nvram\n");
+	printf("--nvram-base <HEX_VAL>    Base address of nvram\n");
+	printf("--nvram-size <HEX_VAL>    Size of nvram\n");
 	printf("-d | --securedebug <FILE>      Add securedebug\n");
 	printf("-t | --trustlets <FILE>        Add trustlets\n");
 	printf("-u | --trustletkey <FILE>      Add trustletkey\n");
@@ -202,6 +204,8 @@ static void usage(void)
 	printf("-e | --bios-bin-src <HEX_VAL>  Address in flash of source if -V not used\n");
 	printf("-v | --bios-bin-dest <HEX_VAL> Destination for uncompressed BIOS\n");
 	printf("-j | --bios-uncomp-size <HEX>  Uncompressed size of BIOS image\n");
+	printf("--bios-pubkey <FILE>           Add BIOS public key\n");
+	printf("--bios-sig-size <HEX>          Size of BIOS signature data\n");
 	printf("\n-o | --output <filename>     output filename\n");
 	printf("-f | --flashsize <HEX_VAL>     ROM size in bytes\n");
 	printf("                               size must be larger than %dKB\n",
@@ -239,6 +243,8 @@ static void usage(void)
 }
 
 typedef enum _amd_bios_type {
+	AMD_BIOS_PUBKEY = 0x05,
+	AMD_BIOS_SIG = 0x07,
 	AMD_BIOS_APCB = 0x60,
 	AMD_BIOS_APOB = 0x61,
 	AMD_BIOS_BIN = 0x62,
@@ -305,6 +311,8 @@ typedef enum _amd_fw_type {
 	AMD_FW_L2_PTR = 0x40,
 	AMD_FW_PSP_VERSTAGE = 0x52,
 	AMD_FW_VERSTAGE_SIG = 0x53,
+	AMD_FW_PSP_RPMC_NVRAM = 0x54,
+	AMD_FW_SPL_TABLE = 0x55,
 	AMD_FW_IMC,
 	AMD_FW_GEC,
 	AMD_FW_XHCI,
@@ -317,6 +325,8 @@ typedef enum _amd_fw_type {
 typedef struct _amd_fw_entry {
 	amd_fw_type type;
 	uint8_t subprog;
+	uint64_t dest;
+	size_t size;
 	char *filename;
 	int level;
 	uint64_t other;
@@ -325,19 +335,19 @@ typedef struct _amd_fw_entry {
 static amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_FW_PSP_PUBKEY, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_BOOTLOADER, .level = PSP_BOTH },
+	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 2, .level = PSP_BOTH },
+	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 1, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 0, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_RECOVERY, .level = PSP_LVL1 },
 	{ .type = AMD_FW_PSP_RTM_PUBKEY, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_SECURED_OS, .level = PSP_LVL2 },
 	{ .type = AMD_FW_PSP_NVRAM, .level = PSP_LVL2 },
-	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 2, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_SECURED_DEBUG, .level = PSP_LVL2 },
 	{ .type = AMD_FW_PSP_TRUSTLETS, .level = PSP_LVL2 },
 	{ .type = AMD_FW_PSP_TRUSTLETKEY, .level = PSP_LVL2 },
 	{ .type = AMD_FW_PSP_SMU_FIRMWARE2, .subprog = 2, .level = PSP_BOTH },
-	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 1, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_SMU_FIRMWARE2, .subprog = 1, .level = PSP_BOTH },
-	{ .type = AMD_FW_PSP_SMU_FIRMWARE2, .level = PSP_BOTH },
+	{ .type = AMD_FW_PSP_SMU_FIRMWARE2, .subprog = 0, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_SMUSCS, .level = PSP_BOTH  },
 	{ .type = AMD_PSP_FUSE_CHAIN, .level = PSP_LVL2 },
 	{ .type = AMD_DEBUG_UNLOCK, .level = PSP_LVL2 },
@@ -345,8 +355,10 @@ static amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_TOKEN_UNLOCK, .level = PSP_BOTH },
 	{ .type = AMD_SEC_GASKET, .subprog = 2, .level = PSP_BOTH },
 	{ .type = AMD_SEC_GASKET, .subprog = 1, .level = PSP_BOTH },
+	{ .type = AMD_SEC_GASKET, .subprog = 0, .level = PSP_BOTH },
 	{ .type = AMD_MP2_FW, .subprog = 2, .level = PSP_LVL2 },
 	{ .type = AMD_MP2_FW, .subprog = 1, .level = PSP_LVL2 },
+	{ .type = AMD_MP2_FW, .subprog = 0, .level = PSP_LVL2 },
 	{ .type = AMD_DRIVER_ENTRIES, .level = PSP_LVL2 },
 	{ .type = AMD_S0I3_DRIVER, .level = PSP_LVL2 },
 	{ .type = AMD_ABL0, .level = PSP_BOTH },
@@ -357,11 +369,11 @@ static amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_ABL5, .level = PSP_BOTH },
 	{ .type = AMD_ABL6, .level = PSP_BOTH },
 	{ .type = AMD_ABL7, .level = PSP_BOTH },
-	{ .type = AMD_FW_PSP_SMU_FIRMWARE, .subprog = 1, .level = PSP_BOTH },
-	{ .type = AMD_FW_PSP_SMU_FIRMWARE2, .subprog = 1, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_WHITELIST, .level = PSP_LVL2 },
 	{ .type = AMD_FW_PSP_VERSTAGE, .level = PSP_BOTH },
 	{ .type = AMD_FW_VERSTAGE_SIG, .level = PSP_BOTH },
+	{ .type = AMD_FW_PSP_RPMC_NVRAM, .level = PSP_LVL2 },
+	{ .type = AMD_FW_SPL_TABLE, .level = PSP_BOTH },
 	{ .type = AMD_FW_INVALID },
 };
 
@@ -373,6 +385,8 @@ static amd_fw_entry amd_fw_table[] = {
 };
 
 static amd_bios_entry amd_bios_table[] = {
+	{ .type = AMD_BIOS_PUBKEY, .inst = 0, .level = BDT_BOTH },
+	{ .type = AMD_BIOS_SIG, .inst = 0, .level = BDT_BOTH },
 	{ .type = AMD_BIOS_APCB, .inst = 0, .level = BDT_BOTH },
 	{ .type = AMD_BIOS_APCB, .inst = 1, .level = BDT_BOTH },
 	{ .type = AMD_BIOS_APCB, .inst = 2, .level = BDT_BOTH },
@@ -420,6 +434,8 @@ static amd_bios_entry amd_bios_table[] = {
 	{ .type = AMD_BIOS_UCODE, .inst = 0, .level = BDT_LVL2 },
 	{ .type = AMD_BIOS_UCODE, .inst = 1, .level = BDT_LVL2 },
 	{ .type = AMD_BIOS_UCODE, .inst = 2, .level = BDT_LVL2 },
+	{ .type = AMD_BIOS_UCODE, .inst = 3, .level = BDT_LVL2 },
+	{ .type = AMD_BIOS_UCODE, .inst = 4, .level = BDT_LVL2 },
 	{ .type = AMD_BIOS_MP2_CFG, .level = BDT_LVL2 },
 	{ .type = AMD_BIOS_PSP_SHARED_MEM, .inst = 0, .level = BDT_BOTH },
 	{ .type = AMD_BIOS_INVALID },
@@ -708,6 +724,8 @@ static void integrate_psp_firmwares(context *ctx,
 	ssize_t bytes;
 	unsigned int i, count;
 	int level;
+	uint32_t size;
+	uint64_t addr;
 
 	/* This function can create a primary table, a secondary table, or a
 	 * flattened table which contains all applicable types.  These if-else
@@ -747,30 +765,34 @@ static void integrate_psp_firmwares(context *ctx,
 			pspdir->entries[count].size = 0xFFFFFFFF;
 			pspdir->entries[count].addr = fw_table[i].other;
 			count++;
-		} else if (fw_table[i].type == AMD_FW_PSP_NVRAM) {
-			if (fw_table[i].filename == NULL)
-				continue;
-			/* TODO: Add a way to reserve for NVRAM without
-			 * requiring a filename.  This isn't a feature used
-			 * by coreboot systems, so priority is very low.
-			 */
-			ctx->current = ALIGN(ctx->current, ERASE_ALIGNMENT);
-			bytes = copy_blob(BUFF_CURRENT(*ctx),
-					fw_table[i].filename, BUFF_ROOM(*ctx));
-			if (bytes <= 0) {
-				free(ctx->rom);
-				exit(1);
+		} else if (fw_table[i].type == AMD_FW_PSP_NVRAM ||
+		           fw_table[i].type == AMD_FW_PSP_RPMC_NVRAM) {
+			if (fw_table[i].filename == NULL) {
+				if (fw_table[i].size == 0)
+					continue;
+				size = fw_table[i].size;
+				addr = fw_table[i].dest;
+			} else {
+				ctx->current = ALIGN(ctx->current, ERASE_ALIGNMENT);
+				bytes = copy_blob(BUFF_CURRENT(*ctx),
+						fw_table[i].filename, BUFF_ROOM(*ctx));
+				if (bytes <= 0) {
+					free(ctx->rom);
+					exit(1);
+				}
+
+				size = ALIGN(bytes, ERASE_ALIGNMENT);
+				addr = RUN_CURRENT(*ctx);
+				ctx->current = ALIGN(ctx->current + bytes,
+								BLOB_ERASE_ALIGNMENT);
 			}
 
 			pspdir->entries[count].type = fw_table[i].type;
 			pspdir->entries[count].subprog = fw_table[i].subprog;
 			pspdir->entries[count].rsvd = 0;
-			pspdir->entries[count].size = ALIGN(bytes,
-							ERASE_ALIGNMENT);
-			pspdir->entries[count].addr = RUN_CURRENT(*ctx);
+			pspdir->entries[count].size = size;
+			pspdir->entries[count].addr = addr;
 
-			ctx->current = ALIGN(ctx->current + bytes,
-							BLOB_ERASE_ALIGNMENT);
 			count++;
 		} else if (fw_table[i].filename != NULL) {
 			bytes = copy_blob(BUFF_CURRENT(*ctx),
@@ -909,6 +931,7 @@ static void integrate_bios_firmwares(context *ctx,
 		if (!(fw_table[i].level & level))
 			continue;
 		if (fw_table[i].filename == NULL && (
+				fw_table[i].type != AMD_BIOS_SIG &&
 				fw_table[i].type != AMD_BIOS_APOB &&
 				fw_table[i].type != AMD_BIOS_APOB_NV &&
 				fw_table[i].type != AMD_BIOS_L2_PTR &&
@@ -917,6 +940,10 @@ static void integrate_bios_firmwares(context *ctx,
 			continue;
 
 		/* BIOS Directory items may have additional requirements */
+
+		/* SIG needs a size, else no choice but to skip */
+		if (fw_table[i].type == AMD_BIOS_SIG && !fw_table[i].size)
+			continue;
 
 		/* Check APOB_NV requirements */
 		if (fw_table[i].type == AMD_BIOS_APOB_NV) {
@@ -973,6 +1000,15 @@ static void integrate_bios_firmwares(context *ctx,
 		biosdir->entries[count].subprog = fw_table[i].subpr;
 
 		switch (fw_table[i].type) {
+		case AMD_BIOS_SIG:
+			/* Reserve size bytes within amdfw.rom */
+			biosdir->entries[count].size = fw_table[i].size;
+			biosdir->entries[count].source = RUN_CURRENT(*ctx);
+			memset(BUFF_CURRENT(*ctx), 0xff,
+					biosdir->entries[count].size);
+			ctx->current = ALIGN(ctx->current
+					+ biosdir->entries[count].size, 0x100U);
+			break;
 		case AMD_BIOS_APOB:
 			biosdir->entries[count].size = fw_table[i].size;
 			biosdir->entries[count].source = fw_table[i].src;
@@ -1081,6 +1117,13 @@ enum {
 	LONGOPT_SPI_READ_MODE	= 256,
 	LONGOPT_SPI_SPEED	= 257,
 	LONGOPT_SPI_MICRON_FLAG	= 258,
+	LONGOPT_NVRAM_BASE	= 259,
+	LONGOPT_NVRAM_SIZE	= 260,
+	LONGOPT_BIOS_PUBKEY	= 261,
+	LONGOPT_BIOS_SIG	= 262,
+	LONGOPT_SPL_TABLE	= 263,
+	LONGOPT_RPMC_NVRAM_BASE	= 264,
+	LONGOPT_RPMC_NVRAM_SIZE	= 265,
 };
 
 // Unused values: D
@@ -1101,6 +1144,8 @@ static struct option long_options[] = {
 	{"rtmpubkey",        required_argument, 0, 'k' },
 	{"secureos",         required_argument, 0, 'c' },
 	{"nvram",            required_argument, 0, 'n' },
+	{"nvram-base",       required_argument, 0, LONGOPT_NVRAM_BASE },
+	{"nvram-size",       required_argument, 0, LONGOPT_NVRAM_SIZE },
 	{"securedebug",      required_argument, 0, 'd' },
 	{"trustlets",        required_argument, 0, 't' },
 	{"trustletkey",      required_argument, 0, 'u' },
@@ -1118,6 +1163,9 @@ static struct option long_options[] = {
 	{"whitelist",        required_argument, 0, 'W' },
 	{"verstage",         required_argument, 0, 'Z' },
 	{"verstage_sig",     required_argument, 0, 'E' },
+	{"spl-table",        required_argument, 0, LONGOPT_SPL_TABLE },
+	{"rpmc-nvram-base",  required_argument, 0, LONGOPT_RPMC_NVRAM_BASE },
+	{"rpmc-nvram-size",  required_argument, 0, LONGOPT_RPMC_NVRAM_SIZE },
 	/* BIOS Directory Table items */
 	{"instance",         required_argument, 0, 'I' },
 	{"apcb",             required_argument, 0, 'a' },
@@ -1126,6 +1174,8 @@ static struct option long_options[] = {
 	{"bios-bin-src",     required_argument, 0, 'e' },
 	{"bios-bin-dest",    required_argument, 0, 'v' },
 	{"bios-uncomp-size", required_argument, 0, 'j' },
+	{"bios-pubkey",      required_argument, 0, LONGOPT_BIOS_PUBKEY },
+	{"bios-sig-size",    required_argument, 0, LONGOPT_BIOS_SIG },
 	{"pmu-inst",         required_argument, 0, 'y' },
 	{"pmu-data",         required_argument, 0, 'G' },
 	{"ucode",            required_argument, 0, 'O' },
@@ -1144,6 +1194,7 @@ static struct option long_options[] = {
 	{"sharedmem",        required_argument, 0, 'R' },
 	{"sharedmem-size",   required_argument, 0, 'P' },
 	{"soc-name",         required_argument, 0, 'C' },
+	{"uncompressed",     no_argument,       0, 'D' },
 	{"help",             no_argument,       0, 'h' },
 	{NULL,               0,                 0,  0  }
 };
@@ -1196,6 +1247,34 @@ static void register_fw_filename(amd_fw_type type, uint8_t sub, char filename[])
 	}
 }
 
+static void register_fw_addr(amd_fw_type type, int sub, char *dst_str, char *size_str)
+{
+	unsigned int i;
+
+	for (i = 0; i < sizeof(amd_fw_table) / sizeof(amd_fw_entry); i++) {
+		if (amd_fw_table[i].type == type) {
+			if (dst_str)
+				amd_fw_table[i].dest = strtoull(dst_str, NULL, 16);
+			if (size_str)
+				amd_fw_table[i].size = strtoul(size_str, NULL, 16);
+			return;
+		}
+	}
+
+	for (i = 0; i < sizeof(amd_psp_fw_table) / sizeof(amd_fw_entry); i++) {
+		if (amd_psp_fw_table[i].type != type)
+			continue;
+
+		if (amd_psp_fw_table[i].subprog == sub) {
+			if (dst_str)
+				amd_psp_fw_table[i].dest = strtoull(dst_str, NULL, 16);
+			if (size_str)
+				amd_psp_fw_table[i].size = strtoul(size_str, NULL, 16);
+			return;
+		}
+	}
+}
+
 static void register_bdt_data(amd_bios_type type, int sub, int ins, char name[])
 {
 	uint32_t i;
@@ -1210,7 +1289,7 @@ static void register_bdt_data(amd_bios_type type, int sub, int ins, char name[])
 	}
 }
 
-static void register_fw_addr(amd_bios_type type, char *src_str,
+static void register_bdt_addr(amd_bios_type type, char *src_str,
 					char *dst_str, char *size_str)
 {
 	uint32_t i;
@@ -1410,6 +1489,26 @@ int main(int argc, char **argv)
 			register_fw_filename(AMD_FW_PSP_NVRAM, sub, optarg);
 			sub = instance = 0;
 			break;
+		case LONGOPT_NVRAM_BASE:
+			/* PSP NV base */
+			register_fw_addr(AMD_FW_PSP_NVRAM, sub, optarg, 0);
+			sub = instance = 0;
+			break;
+		case LONGOPT_NVRAM_SIZE:
+			/* PSP NV size */
+			register_fw_addr(AMD_FW_PSP_NVRAM, sub, 0, optarg);
+			sub = instance = 0;
+			break;
+		case LONGOPT_RPMC_NVRAM_BASE:
+			/* PSP RPMC NV base */
+			register_fw_addr(AMD_FW_PSP_RPMC_NVRAM, sub, optarg, 0);
+			sub = instance = 0;
+			break;
+		case LONGOPT_RPMC_NVRAM_SIZE:
+			/* PSP RPMC NV size */
+			register_fw_addr(AMD_FW_PSP_RPMC_NVRAM, sub, 0, optarg);
+			sub = instance = 0;
+			break;
 		case 'd':
 			register_fw_filename(AMD_FW_PSP_SECURED_DEBUG,
 								sub, optarg);
@@ -1446,17 +1545,17 @@ int main(int argc, char **argv)
 			break;
 		case 'Q':
 			/* APOB destination */
-			register_fw_addr(AMD_BIOS_APOB, 0, optarg, 0);
+			register_bdt_addr(AMD_BIOS_APOB, 0, optarg, 0);
 			sub = instance = 0;
 			break;
 		case 'F':
 			/* APOB NV source */
-			register_fw_addr(AMD_BIOS_APOB_NV, optarg, 0, 0);
+			register_bdt_addr(AMD_BIOS_APOB_NV, optarg, 0, 0);
 			sub = instance = 0;
 			break;
 		case 'H':
 			/* APOB NV size */
-			register_fw_addr(AMD_BIOS_APOB_NV, 0, 0, optarg);
+			register_bdt_addr(AMD_BIOS_APOB_NV, 0, 0, optarg);
 			sub = instance = 0;
 			break;
 		case 'V':
@@ -1465,17 +1564,27 @@ int main(int argc, char **argv)
 			break;
 		case 'e':
 			/* BIOS source */
-			register_fw_addr(AMD_BIOS_BIN, optarg, 0, 0);
+			register_bdt_addr(AMD_BIOS_BIN, optarg, 0, 0);
 			sub = instance = 0;
 			break;
 		case 'v':
 			/* BIOS destination */
-			register_fw_addr(AMD_BIOS_BIN, 0, optarg, 0);
+			register_bdt_addr(AMD_BIOS_BIN, 0, optarg, 0);
 			sub = instance = 0;
 			break;
 		case 'j':
 			/* BIOS destination size */
-			register_fw_addr(AMD_BIOS_BIN, 0, 0, optarg);
+			register_bdt_addr(AMD_BIOS_BIN, 0, 0, optarg);
+			sub = instance = 0;
+			break;
+		case LONGOPT_BIOS_PUBKEY:
+			/* BIOS public key size */
+			register_bdt_data(AMD_BIOS_PUBKEY, 0, 0, optarg);
+			sub = instance = 0;
+			break;
+		case LONGOPT_BIOS_SIG:
+			/* BIOS signature size */
+			register_bdt_addr(AMD_BIOS_SIG, 0, 0, optarg);
 			sub = instance = 0;
 			break;
 		case 'y':
@@ -1537,6 +1646,10 @@ int main(int argc, char **argv)
 			register_fw_filename(AMD_FW_VERSTAGE_SIG, sub, optarg);
 			sub = instance = 0;
 			break;
+		case LONGOPT_SPL_TABLE:
+			register_fw_filename(AMD_FW_SPL_TABLE, sub, optarg);
+			sub = instance = 0;
+			break;
 		case 'C':
 			soc_id = identify_platform(optarg);
 			if (soc_id == PLATFORM_UNKNOWN) {
@@ -1544,6 +1657,13 @@ int main(int argc, char **argv)
 				retval = 1;
 			}
 			sub = instance = 0;
+			break;
+		case 'D':
+			for (size_t i = 0; i < sizeof(amd_bios_table) / sizeof(amd_bios_entry); i++) {
+				if (amd_bios_table[i].type != AMD_BIOS_BIN)
+					continue;
+				amd_bios_table[i].zlib = 0;
+			}
 			break;
 		case LONGOPT_SPI_READ_MODE:
 			efs_spi_readmode = strtoull(optarg, NULL, 16);
@@ -1581,12 +1701,12 @@ int main(int argc, char **argv)
 			break;
 		case 'R':
 			/* shared memory destination */
-			register_fw_addr(AMD_BIOS_PSP_SHARED_MEM, 0, optarg, 0);
+			register_bdt_addr(AMD_BIOS_PSP_SHARED_MEM, NULL, optarg, NULL);
 			sub = instance = 0;
 			break;
 		case 'P':
 			/* shared memory size */
-			register_fw_addr(AMD_BIOS_PSP_SHARED_MEM, NULL, NULL, optarg);
+			register_bdt_addr(AMD_BIOS_PSP_SHARED_MEM, NULL, NULL, optarg);
 			sub = instance = 0;
 			break;
 

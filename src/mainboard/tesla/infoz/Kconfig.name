@@ -1,0 +1,5 @@
+comment "InfoZ"
+
+config BOARD_TESLA_CORIANDER
+	bool "->  Coriander"
+	select BOARD_TESLA_INFOZ

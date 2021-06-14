@@ -146,23 +146,24 @@ void gpio_set(gpio_t gpio_num, int value)
 
 void gpio_input_pulldown(gpio_t gpio_num)
 {
-	__gpio_setbits32(gpio_num, GPIO_PULL_MASK, GPIO_PULLDOWN_ENABLE);
+	__gpio_setbits32(gpio_num, GPIO_PULL_MASK | GPIO_OUTPUT_MASK, GPIO_PULLDOWN_ENABLE);
 }
 
 void gpio_input_pullup(gpio_t gpio_num)
 {
-	__gpio_setbits32(gpio_num, GPIO_PULL_MASK, GPIO_PULLUP_ENABLE);
+	__gpio_setbits32(gpio_num, GPIO_PULL_MASK | GPIO_OUTPUT_MASK, GPIO_PULLUP_ENABLE);
 }
 
 void gpio_input(gpio_t gpio_num)
 {
-	__gpio_and32(gpio_num, ~GPIO_OUTPUT_ENABLE);
+	__gpio_and32(gpio_num, ~(GPIO_PULL_MASK | GPIO_OUTPUT_MASK));
 }
 
 void gpio_output(gpio_t gpio_num, int value)
 {
-	__gpio_or32(gpio_num, GPIO_OUTPUT_ENABLE);
+	/* Set gpio level before gpio direction to avoid glitch */
 	gpio_set(gpio_num, value);
+	__gpio_or32(gpio_num, GPIO_OUTPUT_ENABLE);
 }
 
 const char *gpio_acpi_path(gpio_t gpio)
@@ -368,3 +369,44 @@ void gpio_add_events(const struct gpio_wake_state *state)
 	for (i = 0; i < end; i++)
 		elog_add_event_wake(ELOG_WAKE_SOURCE_GPIO, state->wake_gpios[i]);
 }
+
+#if !ENV_BOOTBLOCK
+void gpio_dump(void)
+{
+	int i, n, g, iomux;
+	uint32_t reg;
+	int gpio_nums[] = SOC_GPIO_ALL_PINS;
+	uint8_t func_map[] = SOC_IOMUX_GPIO_FUNC_MAP;
+
+	printk(BIOS_SPEW, "========== Begin AMD SoC GPIO State ==========\n");
+
+	printk(BIOS_SPEW, "WakeIntMasSwitch=0x%08x\n",
+		gpio_read32(GPIO_MASTER_SWITCH / sizeof(uint32_t)));
+	printk(BIOS_SPEW, "WakeStatIndex0=0x%08x\n",
+		gpio_read32(GPIO_WAKE_STAT_0 / sizeof(uint32_t)));
+	printk(BIOS_SPEW, "WakeStatIndex1=0x%08x\n",
+		gpio_read32(GPIO_WAKE_STAT_1 / sizeof(uint32_t)));
+
+	n = ARRAY_SIZE(gpio_nums);
+	for (i = 0; i < n; i++) {
+		g = gpio_nums[i];
+		iomux = iomux_read8(g);
+		reg = gpio_read32(g);
+		printk(BIOS_SPEW, "GPIO%d,IOMUX=%d,BankNCtl=0x%08x,mode=%s,"
+			"Dir=%s,Pull=%s,OutVal=%d,PinStatus=%d,WokeUs=%c,"
+			"IntActive=%c,IntEn=%c\n",
+			g, iomux, reg,
+			iomux == func_map[g] ? "GPIO" : "Dedicated_NF",
+			reg & GPIO_OUTPUT_ENABLE ? "Output" : "Input",
+			reg & GPIO_PULLUP_ENABLE ? "UP" :
+				(reg & GPIO_PULLDOWN_ENABLE ? "DOWN" : "NONE"),
+			reg & GPIO_OUTPUT_VALUE ? 1 : 0,
+			reg & GPIO_PIN_STS ? 1 : 0,
+			reg & GPIO_WAKE_STATUS ? 'Y' : 'N',
+			reg & GPIO_INT_STATUS ? 'Y' : 'N',
+			reg & GPIO_INT_ENABLE_MASK ? 'Y' : 'N'
+			);
+	}
+	printk(BIOS_SPEW, "========== End AMD SoC GPIO State ==========\n");
+}
+#endif

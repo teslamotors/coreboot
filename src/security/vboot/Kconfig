@@ -105,6 +105,16 @@ config VBOOT_MOCK_SECDATA
 	  can be used during development when a TPM is not present or broken.
 	  THIS SHOULD NOT BE LEFT ON FOR PRODUCTION DEVICES.
 
+config VBOOT_MOCK_TPM
+	bool "Mock tpm operations during verified boot"
+	default n
+	depends on VBOOT_MOCK_SECDATA
+	help
+	  Enabling VBOOT_MOCK_TPM will mock tpm actions in the same way that
+	  is already done for build targets without trusted platform modules.
+	  This is suggested only for the case where verstage specifically will
+	  not have access to the tpm, but other stages may.
+
 config VBOOT_DISABLE_DEV_ON_RECOVERY
 	bool
 	default n
@@ -263,6 +273,37 @@ config VBOOT_EC_EFS
 	  software sync needs to also support it. This setting tells vboot to
 	  perform EFS software sync.
 
+config VBOOT_VERIFY_RO
+	bool "GBB and root key verification"
+	default n
+	help
+	  Force verication of GBB and root key hashes. Vboot will create
+	  patterns in verstage at which hashes of the GBB header and root key
+	  respectively must be injected, tying their validity to the validity
+	  of the verstage binary.
+
+config VBOOT_REFUSE_RECOVERY
+	bool "Refuse to boot into recovery mode"
+	default n
+	help
+	  In the case of RW firmware verification failure, verstage will
+	  fall back to recovery mode, executing an unsigned coreboot CBFS in
+	  the RO section. With this setting, verstage will reboot when trying
+	  to exit to recovery mode and refuse to report COREBOOT as boot region.
+	  This does not change post-verstage hooks for checking recovery status.
+
+config VBOOT_DISABLE_SHA1
+	bool "Build vboot without sha1 support"
+	default n
+
+config VBOOT_DISABLE_SHA256
+	bool "Build vboot without sha256 support"
+	default n
+
+config VBOOT_DISABLE_SHA512
+	bool "Build vboot without sha512 support"
+	default n
+
 menu "GBB configuration"
 
 config GBB_HWID
@@ -333,6 +374,7 @@ config GBB_FLAG_DISABLE_LID_SHUTDOWN
 config GBB_FLAG_FORCE_MANUAL_RECOVERY
 	bool "Always assume manual recovery in recovery mode"
 	default n
+	depends on !VBOOT_DISABLE_RECOVERY_MODE
 
 config GBB_FLAG_DISABLE_FWMP
 	bool "Disable Firmware Management Parameters (FWMP)"

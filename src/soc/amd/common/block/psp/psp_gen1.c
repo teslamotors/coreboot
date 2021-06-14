@@ -143,3 +143,98 @@ int psp_load_named_blob(enum psp_blob_type type, const char *name)
 	rdev_munmap(&rdev, blob);
 	return cmd_status;
 }
+
+static void wr_mbox_init(struct pspv1_bios_mbox *mbox, bool init)
+{
+	u32 status = read32(&mbox->mbox_status);
+	if (init)
+		status |= 1;
+	else
+		status &= ~1;
+	write32(&mbox->mbox_status, status);
+}
+
+void enable_psp_smi(void *buffer)
+{
+	struct pspv1_bios_mbox *mbox = (struct pspv1_bios_mbox *)buffer;
+	wr_mbox_init(true);
+}
+
+void disable_psp_smi(void *buffer)
+{
+	struct pspv1_bios_mbox *mbox = (struct pspv1_bios_mbox *)buffer;
+	wr_mbox_init(false);
+}
+
+void clear_psp_command(void *buffer)
+{
+	struct pspv1_bios_mbox *mbox = (struct pspv1_bios_mbox *)buffer;
+	write32(&mbox->mbox_command, 0);
+}
+
+u32 check_psp_command(void *buffer)
+{
+	return MBOX_PSP_SUCCESS;
+}
+
+u32 get_psp_command(void *buffer)
+{
+	struct pspv1_bios_mbox *mbox = (struct pspv1_bios_mbox *)buffer;
+	read32(&mbox->mbox_command);
+}
+
+struct mbox_default_buffer *get_psp_command_buffer(void *buffer)
+{
+	struct pspv1_bios_mbox *mbox = (struct pspv1_bios_mbox *)buffer;
+	return &mbox->buffer;
+}
+
+bool valid_psp_spi_info(struct mbox_default_buffer *buffer)
+{
+	return true;
+}
+
+bool valid_psp_spi_read_write(struct mbox_default_buffer *buffer)
+{
+	return true;
+}
+
+bool valid_psp_spi_erase(struct mbox_default_buffer *buffer)
+{
+	return true;
+}
+
+u64 get_psp_spi_info_id(struct mbox_default_buffer *buffer)
+{
+	return SMI_TARGET_NVRAM;
+}
+
+void set_psp_spi_info(struct mbox_default_buffer *buffer,
+			u64 lba, u64 block_size, u64 num_blocks)
+{
+	struct mbox_pspv1_cmd_spi_info *cmd = (struct mbox_pspv1_cmd_spi_info *)buffer;
+	write32(&cmd->req.lba, lba);
+	write32(&cmd->req.block_size, block_size);
+	write32(&cmd->req.num_blocks, num_blocks);
+}
+
+void get_psp_spi_read_write(struct mbox_default_buffer *buffer,
+				u64 *id, u64 *lba, u64 *offset,
+				u64 *num_bytes, u8 **data)
+{
+	struct mbox_pspv1_cmd_spi_read_write *cmd = (struct mbox_pspv1_cmd_spi_read_write *)buffer;
+	*id = SMI_TARGET_NVRAM;
+	*lba = read64(&cmd->req.lba);
+	*offset = read64(&cmd->req.offset);
+	*num_bytes = read64(&cmd->req.num_bytes);
+	*data = cmd->req.buffer;
+}
+
+void get_psp_spi_erase(struct mbox_default_buffer *buffer,
+			u64 *id, u64 *lba, u64 *num_blocks)
+{
+	struct mbox_pspv1_cmd_spi_erase *cmd = (struct mbox_pspv1_cmd_spi_erase *)buffer;
+	*id = SMI_TARGET_NVRAM;
+	*lba = read64(&cmd->req.lba);
+	*num_blocks = read64(&cmd->req.num_blocks);
+}

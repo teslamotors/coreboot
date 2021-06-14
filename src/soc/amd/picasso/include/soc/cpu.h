@@ -16,5 +16,7 @@ void check_mca(void);
 #define PICASSO_VBIOS_REV		0xc1
 #define RAVEN2_VBIOS_VID_DID		0x100215dd  /* VID/DID in RV2 VBIOS header */
 #define RAVEN2_VBIOS_REV		0xc4
+#define RAVEN1_VBIOS_VID_DID		0x100215dd
+#define RAVEN1_VBIOS_REV		0x81
 
 #endif /* __PICASSO_CPU_H__ */

@@ -36,6 +36,8 @@ void do_warm_reset(void)
 	set_warm_reset_flag();
 
 	/* Assert reset signals only. */
+	pm_write16(PWR_RESET_CFG, pm_read16(PWR_RESET_CFG) &
+		~TOGGLE_ALL_PWR_GOOD);
 	outb(RST_CMD | SYS_RST, SYS_RESET);
 }
 

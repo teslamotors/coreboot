@@ -504,7 +504,7 @@ endif
 
 additional-dirs := $(objutil)/cbfstool $(objutil)/ifdtool \
 		   $(objutil)/options $(objutil)/amdfwtool \
-		   $(objutil)/cbootimage
+		   $(objutil)/cbootimage $(objutil)/amdsigtool
 
 export $(COREBOOT_EXPORTS)
 
@@ -577,6 +577,11 @@ $(IFDTOOL):
 	cp -a $(top)/util/ifdtool/ifdtool $@
 
 AMDFWTOOL:=$(objutil)/amdfwtool/amdfwtool
+
+AMDSIGTOOL:=$(objutil)/amdsigtool/amdsigtool
+$(AMDSIGTOOL): $(top)/util/amdsigtool/amdsigtool.c
+	@printf "    HOSTCC     $(subst $(obj)/,,$(@))\n"
+	$(HOSTCC) $(HOSTCFLAGS) -o $@ $< -lz
 
 APCB_EDIT_TOOL:=$(top)/util/apcb/apcb_edit.py
 
@@ -683,7 +688,7 @@ install-git-commit-clangfmt:
 include util/crossgcc/Makefile.inc
 
 .PHONY: tools
-tools: $(objutil)/kconfig/conf $(objutil)/kconfig/toada $(CBFSTOOL) $(objutil)/cbfstool/cbfs-compression-tool $(FMAPTOOL) $(RMODTOOL) $(IFWITOOL) $(objutil)/nvramtool/nvramtool $(objutil)/sconfig/sconfig $(IFDTOOL) $(CBOOTIMAGE) $(AMDFWTOOL) $(AMDCOMPRESS) $(FUTILITY) $(BINCFG) $(IFITTOOL) $(objutil)/supermicro/smcbiosinfo
+tools: $(objutil)/kconfig/conf $(objutil)/kconfig/toada $(CBFSTOOL) $(objutil)/cbfstool/cbfs-compression-tool $(FMAPTOOL) $(RMODTOOL) $(IFWITOOL) $(objutil)/nvramtool/nvramtool $(objutil)/sconfig/sconfig $(IFDTOOL) $(CBOOTIMAGE) $(AMDFWTOOL) $(AMDSIGTOOL) $(AMDCOMPRESS) $(FUTILITY) $(BINCFG) $(IFITTOOL) $(objutil)/supermicro/smcbiosinfo
 
 ###########################################################################
 # Common recipes for all stages
@@ -1061,6 +1066,7 @@ ifneq ($(CONFIG_UPDATE_IMAGE),y)
 $(obj)/coreboot.pre: $(objcbfs)/bootblock.bin $$(prebuilt-files) $(CBFSTOOL) $(IFITTOOL) $$(cpu_ucode_cbfs_file) $(obj)/fmap.fmap $(obj)/fmap.desc
 	$(CBFSTOOL) $@.tmp create -M $(obj)/fmap.fmap -r $(shell cat $(obj)/fmap.desc)
 ifeq ($(CONFIG_ARCH_X86),y)
+ifneq ($(CONFIG_BOARD_TESLA_INFOZ),y)
 	$(CBFSTOOL) $@.tmp add \
 		-f $(objcbfs)/bootblock.bin \
 		-n bootblock \
@@ -1068,6 +1074,7 @@ ifeq ($(CONFIG_ARCH_X86),y)
 		$(TXTIBB) \
 		-b -$(call file-size,$(objcbfs)/bootblock.bin) $(cbfs-autogen-attributes) \
 		$(TS_OPTIONS)
+endif # ifneq ($(CONFIG_BOARD_TESLA_INFOZ),y)
 else # ifeq ($(CONFIG_ARCH_X86),y)
 	$(CBFSTOOL) $@.tmp write -u \
 		-r BOOTBLOCK \

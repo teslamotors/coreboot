@@ -25,6 +25,7 @@
 #include <soc/smi.h>
 #include <soc/uart.h>
 #include <soc/amd_pci_int_defs.h>
+#include <soc/pci.h>
 #include <soc/pci_devs.h>
 #include <soc/nvs.h>
 #include <types.h>
@@ -158,7 +159,7 @@ void fch_pre_init(void)
 		set_uart_config(CONFIG_UART_FOR_CONSOLE);
 }
 
-static void print_num_status_bits(int num_bits, uint32_t status,
+static void print_num_status_bits(int loglevel, int num_bits, uint32_t status,
 				  const char *const bit_names[])
 {
 	int i;
@@ -169,9 +170,9 @@ static void print_num_status_bits(int num_bits, uint32_t status,
 	for (i = num_bits - 1; i >= 0; i--) {
 		if (status & (1 << i)) {
 			if (bit_names[i])
-				printk(BIOS_DEBUG, "%s ", bit_names[i]);
+				printk(loglevel, "%s ", bit_names[i]);
 			else
-				printk(BIOS_DEBUG, "BIT%d ", i);
+				printk(loglevel, "BIT%d ", i);
 		}
 	}
 }
@@ -204,10 +205,11 @@ static void sb_print_pmxc0_status(void)
 		[29] = "EcWatchdogRst",
 	};
 
-	printk(BIOS_DEBUG, "PMxC0 STATUS: 0x%x ", pmxc0_status);
-	print_num_status_bits(ARRAY_SIZE(pmxc0_status_bits), pmxc0_status,
+	printk(BIOS_NOTICE, "PMxC0 STATUS: 0x%x ", pmxc0_status);
+	print_num_status_bits(BIOS_NOTICE,
+			      ARRAY_SIZE(pmxc0_status_bits), pmxc0_status,
 			      pmxc0_status_bits);
-	printk(BIOS_DEBUG, "\n");
+	printk(BIOS_NOTICE, "\n");
 }
 
 /* After console init */
@@ -223,6 +225,18 @@ void fch_early_init(void)
 		espi_setup();
 		espi_configure_decodes();
 	}
+}
+
+/* Set BLINK pin (AGPIO11) rate. */
+void fch_blink_rate(enum fch_blink_setting rate)
+{
+	uint32_t val;
+
+	val = pm_read32(PM_MISC_CONTROL);
+	val &= ~PM_MISC_CONTROL_BLINK_BITS;
+	val |= (uint32_t) rate;
+
+	pm_write32(PM_MISC_CONTROL, val);
 }
 
 void sb_enable(struct device *dev)
@@ -385,6 +399,9 @@ static void set_pci_irqs(void *unused)
 {
 	/* Write PCI_INTR regs 0xC00/0xC01 */
 	write_pci_int_table();
+
+	/* pirq_data is consumed by `write_pci_cfg_irqs` */
+	populate_pirq_data();
 
 	/* Write IRQs for all devicetree enabled devices */
 	write_pci_cfg_irqs();

@@ -18,6 +18,8 @@ int vbnv_udc_enable_flag(void);
 void vbnv_init(uint8_t *vbnv_copy);
 /* Reset vbnv snapshot to a known state. */
 void vbnv_reset(uint8_t *vbnv_copy);
+/* Erase vbnv to original state. */
+void vbnv_erase(uint8_t *vbnv_copy);
 
 /* CMOS backend */
 /* Initialize the vbnv CMOS backing store. The vbnv_copy pointer is used for

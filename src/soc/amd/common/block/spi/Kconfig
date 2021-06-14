@@ -52,3 +52,10 @@ config EFS_SPI_MICRON_FLAG
 	    0: Board does not use Micron parts
 	    1: Board always uses Micron parts
 	    2: Micron parts are optional
+
+config SOC_AMD_COMMON_BLOCK_SPI_ALT
+	bool
+	default n
+	help
+	  Select if your platform has a SPI flash connected to the alternate
+	  chip select.
