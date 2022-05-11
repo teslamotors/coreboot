@@ -127,6 +127,44 @@ static void fch_smbus_init(void)
 	asf_write8(SMBSLVSTAT, SMBSLV_STAT_CLEAR);
 }
 
+/* Watchdog Init */
+static void fch_wdt_init(void)
+{
+	uint32_t pm_decode_en;
+
+	/* Enable WDT and set counter to 1 sec */
+	pm_decode_en = pm_read32(PM_DECODE_EN);
+	pm_decode_en &= ~(WDT_OPTIONS | WDT_FREQ | WDT_IO_EN);
+	pm_decode_en |= (WDT_OPTIONS_EN | WDT_FREQ_1SEC | WDT_IO_EN);
+	pm_write32(PM_DECODE_EN, pm_decode_en);
+}
+
+/*
+ * Watchdog Kick
+ *	sec: 0 - Stop WDT
+ *	     X - Start/Kick WDT for X sec
+ */
+void fch_wdt_kick(uint16_t timeout_sec)
+{
+	/* Clear Watchdog Control */
+	wdt_write8(WDT_CTL, WDT_CTL_FIRED);
+
+	/* Return if to stop WDT */
+	if (timeout_sec == 0) {
+		printk(BIOS_DEBUG, "Stop WDT.\n");
+		return;
+	} else {
+		printk(BIOS_DEBUG, "Start WDT with %d sec timeout.\n", timeout_sec);
+	}
+
+	/* Set Watchdog Counter */
+	wdt_write16(WDT_CNT, timeout_sec);
+
+	/* Enable and Start Watchdog */
+	wdt_write8(WDT_CTL, WDT_CTL_RUN_STOP);
+	wdt_write8(WDT_CTL, WDT_CTL_TRIGGER | WDT_CTL_RUN_STOP);
+}
+
 static void lpc_configure_decodes(void)
 {
 	if (CONFIG(POST_IO) && (CONFIG_POST_IO_PORT == 0x80))
@@ -143,6 +181,7 @@ void fch_pre_init(void)
 
 	fch_spi_early_init();
 	enable_acpimmio_decode_pm04();
+	fch_wdt_init();
 	fch_smbus_init();
 	sb_enable_cf9_io();
 	sb_enable_legacy_io();

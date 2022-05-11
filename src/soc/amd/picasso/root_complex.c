@@ -68,6 +68,11 @@ struct dptc_input {
  *                     |                                |
  *                     |                                |
  *   reserved_dram_end +--------------------------------+
+ *                     |         pstore/ramoops         |
+ *                     |    (PSP_PERSISTENT_MEM_SIZE)   |
+ *                     +--------------------------------+ PSP_PERSISTENT_MEM_BASE
+ *                     |          Unused hole           |
+ *                     +--------------------------------+
  *                     |                                |
  *                     |       verstage (if reqd)       |
  *                     |          (VERSTAGE_SIZE)       |
@@ -145,6 +150,11 @@ static void read_resources(struct device *dev)
 	 * cbmem_top() accounts for low UMA and TSEG if they are used. */
 	ram_resource(dev, idx++, early_reserved_dram_end / KiB,
 		     (mem_usable - early_reserved_dram_end) / KiB);
+
+#if CONFIG(PSP_PERSISTENT_MEM_AS_RAM_OOPS)
+	reserved_ram_resource(dev, idx++, CONFIG_PSP_PERSISTENT_MEM_BASE / KiB,
+			      CONFIG_PSP_PERSISTENT_MEM_SIZE / KiB);
+#endif
 
 	mmconf_resource(dev, MMIO_CONF_BASE);
 

@@ -8,6 +8,10 @@
 
 DECLARE_REGION(early_reserved_dram)
 
+#if CONFIG(VBOOT_VERIFY_RW_ON_LOAD)
+DECLARE_REGION(vboot_fw_stash)
+#endif
+
 struct memmap_early_dram {
 	uint32_t base;
 	uint32_t size;

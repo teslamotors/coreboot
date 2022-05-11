@@ -7,6 +7,13 @@
 #include <device/i2c_simple.h>
 
 #define MAX_GENERIC_PROPERTY_LIST 10
+#define MAX_REG_INIT_LIST 16
+
+struct i2c_reg_init {
+	uint32_t val;
+	int size;
+	uint8_t reg;
+};
 
 struct drivers_i2c_generic_config {
 	const char *hid;	/* ACPI _HID (required) */
@@ -63,6 +70,10 @@ struct drivers_i2c_generic_config {
 	/* Generic properties for exporting device-specific data to the OS */
 	struct acpi_dp property_list[MAX_GENERIC_PROPERTY_LIST];
 	int property_count;
+
+	/* Generic list of I2C registers and values to initialize on boot */
+	struct i2c_reg_init reg_init_list[MAX_REG_INIT_LIST];
+	int reg_init_count;
 };
 
 /*

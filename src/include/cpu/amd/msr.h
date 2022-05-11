@@ -67,6 +67,11 @@
 #define  SMM_TSEG_VALID			(1 << 1)
 #define  SMM_TSEG_WB			(6 << 12)
 
+#define CSTATE_CFG_MSR			0xC0010296
+#define  CSTATE_CCR0_CC6EN		(1 << 6)
+#define  CSTATE_CCR1_CC6EN		(1 << 14)
+#define  CSTATE_CCR2_CC6EN		(1 << 22)
+
 #define CPU_ID_FEATURES_MSR		0xC0011004
 #define CPU_ID_EXT_FEATURES_MSR		0xC0011005
 #define CPU_ID_HYPER_EXT_FEATURES	0xC001100d

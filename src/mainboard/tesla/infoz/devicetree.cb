@@ -101,11 +101,11 @@ chip soc/amd/picasso
 				register "reset_off_delay_ms" = "0"
 				# tRAMP-DOWN
 				register "enable_off_delay_ms" = "20"
-				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(108)"
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(4)"
 				# 50ms ramp up + 100ms PERST
 				register "enable_delay_ms" = "150"
 				register "pgood_gpio" = "ACPI_GPIO_INPUT_ACTIVE_HIGH(3)"
-				device pci 0.0 on  end	# dGPU upstream bridge
+				device pci 0.0 omit_early  end	# dGPU upstream bridge
 			end
 		end
 		device pci 1.2 off end # GPP Bridge 1
@@ -130,17 +130,17 @@ chip soc/amd/picasso
 						chip drivers/usb/acpi
 							register "desc" = ""Front Hub""
 							register "type" = "UPC_TYPE_USB3_A"
-							device usb 3.1 on end # USB_0_DP1 / USB_0_DM1 / USB_0_TXP1 / USB_0_TXN1 / USB_0_RXP1 / USB_0_RXN1
+							device usb 3.1 omit_early end # USB_0_DP1 / USB_0_DM1 / USB_0_TXP1 / USB_0_TXN1 / USB_0_RXP1 / USB_0_RXN1
 						end
 						chip drivers/usb/acpi
 							register "desc" = ""USB Storage""
 							register "type" = "UPC_TYPE_USB3_A"
-							device usb 3.2 on end # USB_0_DP2 / USB_0_DM2 / USB_0_TXP2 / USB_0_TXN2 / USB_0_RXP2 / USB_0_RXN2
+							device usb 3.2 omit_early end # USB_0_DP2 / USB_0_DM2 / USB_0_TXP2 / USB_0_TXN2 / USB_0_RXP2 / USB_0_RXN2
 						end
 						chip drivers/usb/acpi
 							register "desc" = ""Cellular Modem""
 							register "type" = "UPC_TYPE_INTERNAL"
-							device usb 3.3 on end # USB_0_DP3 / USB_0_DM3 / USB_0_TXP3 / USB_0_TXN3 / USB_0_RXP3 / USB_0_RXN3
+							device usb 3.3 omit_early end # USB_0_DP3 / USB_0_DM3 / USB_0_TXP3 / USB_0_TXN3 / USB_0_RXP3 / USB_0_RXN3
 						end
 					end
 				end
@@ -153,7 +153,7 @@ chip soc/amd/picasso
 						chip drivers/usb/acpi
 							register "desc" = ""Audio DSP""
 							register "type" = "UPC_TYPE_INTERNAL"
-							device usb 2.0 on end # USB_1_DP1 / USB_1_DM1
+							device usb 2.0 omit_early end # USB_1_DP1 / USB_1_DM1
 						end
 						chip drivers/usb/acpi
 							device usb 3.0 off end # USB_1_DP0 / USB_1_DM0 / USB_1_TXP0 / USB_1_TXN0 / USB_1_RXP0 / USB_1_RXN0
@@ -176,14 +176,14 @@ chip soc/amd/picasso
 							register "desc" = ""Temperature Sensor: Board SoC""
 							register "uid" = "13004"
 							register "compat_string" = ""ti,tmp75b""
-							device i2c 48 on end
+							device i2c 48 omit_early end
 						end
 						chip drivers/i2c/generic
 							register "hid" = ""PRP0001""
 							register "desc" = ""Temperature Sensor: WiFi module""
 							register "uid" = "13007"
 							register "compat_string" = ""ti,tmp75b""
-							device i2c 49 on end
+							device i2c 49 omit_early end
 						end
 
 						# dGPU temperature sensors
@@ -192,21 +192,21 @@ chip soc/amd/picasso
 							register "desc" = ""Temperature Sensor: dGPU differential""
 							register "uid" = "1015"
 							register "compat_string" = ""ti,tmp451""
-							device i2c 4c on end
+							device i2c 4c omit_early end
 						end
 						chip drivers/i2c/generic
 							register "hid" = ""PRP0001""
 							register "desc" = ""Temperature Sensor: dGPU A""
 							register "uid" = "1010"
 							register "compat_string" = ""ti,tmp75b""
-							device i2c 4d on end
+							device i2c 4d omit_early end
 						end
 						chip drivers/i2c/generic
 							register "hid" = ""PRP0001""
 							register "desc" = ""Temperature Sensor: dGPU B""
 							register "uid" = "1012"
 							register "compat_string" = ""ti,tmp75b""
-							device i2c 4f on end
+							device i2c 4f omit_early end
 						end
 
 						# GPIO expanders
@@ -216,13 +216,12 @@ chip soc/amd/picasso
 							register "desc" = ""GPIO Expander: Audio/LTE""
 							register "uid" = "5014"
 							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(10)"
-							register "has_power_resource" = "1"
 							# reset_gpio may be rewritten at runtime
 							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
 							register "reset_delay_ms" = "1"
 							register "reset_off_delay_ms" = "1"
 							register "disable_gpio_export_in_crs" = "1"
-							device i2c 20 on end
+							device i2c 20 omit_early end
 						end
 						chip drivers/i2c/generic
 							register "hid" = ""PI4IO16""
@@ -230,13 +229,13 @@ chip soc/amd/picasso
 							register "desc" = ""GPIO Expander: WLAN/BT/LTE/USB/BOARD-ID""
 							register "uid" = "5013"
 							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(29)"
-							register "has_power_resource" = "1"
 							# reset_gpio may be rewritten at runtime
 							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
 							register "reset_delay_ms" = "1"
 							register "reset_off_delay_ms" = "1"
 							register "disable_gpio_export_in_crs" = "1"
-							device i2c 21 on end
+							register "speed" = "I2C_SPEED_STANDARD"
+							device i2c 21 omit_early end
 						end
 					end
 				end
@@ -252,13 +251,13 @@ chip soc/amd/picasso
 							register "desc" = ""GPIO Expander: Displays""
 							register "uid" = "5011"
 							register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_LOW(31)"
-							register "has_power_resource" = "1"
 							# reset_gpio may be rewritten at runtime
 							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(13)"
 							register "reset_delay_ms" = "1"
 							register "reset_off_delay_ms" = "1"
 							register "disable_gpio_export_in_crs" = "1"
-							device i2c 20 on end
+							register "speed" = "I2C_SPEED_STANDARD"
+							device i2c 20 omit_early end
 						end
 					end
 				end
@@ -306,7 +305,7 @@ chip soc/amd/picasso
 			register "property_list[4].integer" = "0x000f"
 			register "property_count" = "5"
 			register "speed" = "I2C_SPEED_STANDARD"
-			device i2c 28 on end
+			device i2c 28 omit_early end
 		end
 		chip drivers/i2c/generic
 			register "hid" = ""GTWMFD00""
@@ -317,7 +316,7 @@ chip soc/amd/picasso
 			register "property_list[0].integer" = "251"
 			register "property_count" = "1"
 			register "speed" = "I2C_SPEED_STANDARD"
-			device i2c 11 on end
+			device i2c 11 omit_early end
 		end
 	end
 
@@ -343,7 +342,7 @@ chip soc/amd/picasso
 			register "property_list[4].name" = ""chip_flags""
 			register "property_list[4].integer" = "0x000f"
 			register "property_count" = "5"
-			device i2c 28 on end
+			device i2c 28 omit_early end
 		end
 	end
 end	# chip soc/amd/picasso

@@ -3,6 +3,9 @@
 #ifndef __AMD_PSP_H__
 #define __AMD_PSP_H__
 
+#include <stdint.h>
+#include <types.h>
+
 /* Get the mailbox base address - specific to family of device. */
 void *soc_get_mbox_address(void);
 
@@ -64,6 +67,8 @@ int psp_get_oem_state(u8 *state);
 
 int psp_notify_smm(void);
 
+void psp_enable_smi(void);
+
 void psp_smi_handler(void);
 
 /*
@@ -83,6 +88,8 @@ enum psp_blob_type {
 void psp_notify_sx_info(u8 sleep_type);
 
 int psp_load_named_blob(enum psp_blob_type type, const char *name);
+
+#define PSB_CONFIG_CUSTOMER_KEY_LOCK_BIT	BIT(28)
 
 struct psb_fuse_config {
 	u32 config;

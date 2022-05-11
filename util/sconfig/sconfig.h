@@ -117,6 +117,8 @@ struct device {
 	int hidden;
 	/* non-zero if the device should be included in all cases */
 	int mandatory;
+	/* Indicates some device info can be omitted in early boot */
+	int omit_early;
 
 	/* Subsystem IDs for the device. */
 	int subsystem_vendor;

@@ -6,6 +6,8 @@
 #include <soc/psb.h>
 #include <soc/amd/common/block/psp/psp_def.h>
 #include <types.h>
+#include <delay.h>
+#include "cc6.h"
 
 #define MSR_CU_CBBCFG		0xc00110a2
 #define PSB_STATUS_OFFSET	0x10994
@@ -165,7 +167,13 @@ static int update_psp_anti_rollback(u32 status)
 
 	printk(BIOS_DEBUG, "PSB: SPL fuse... ");
 
+	cc6_disable();
+	/* Give cores in CC6 a chance to exit */
+	mdelay(100);
+
 	cmd_status = send_psp_command(MBOX_BIOS_CMD_SPL_FUSE, &buffer);
+
+	cc6_enable();
 
 	psp_print_cmd_status(cmd_status, &buffer.header);
 
@@ -245,7 +253,13 @@ int psb_enable(void)
 
 	printk(BIOS_DEBUG, "PSB: Enable... ");
 
+	cc6_disable();
+	/* Give cores in CC6 a chance to exit */
+	mdelay(100);
+
 	cmd_status = send_psp_command(MBOX_BIOS_CMD_PSB_AUTO_FUSING, &buffer);
+
+	cc6_enable();
 
 	psp_print_cmd_status(cmd_status, &buffer.header);
 

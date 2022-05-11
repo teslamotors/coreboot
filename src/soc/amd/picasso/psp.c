@@ -2,10 +2,14 @@
 
 #include <console/console.h>
 #include <cpu/x86/msr.h>
+#include <device/mmio.h>
+#include <soc/psp.h>
 #include <soc/smi.h>
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/psp.h>
+#include <string.h>
 
+#define PSP_DEBUG_OFFSET		0x10500
 #define PSP_MAILBOX_OFFSET		0x10570
 #define MSR_CU_CBBCFG			0xc00110a2
 
@@ -20,6 +24,42 @@ void *soc_get_mbox_address(void)
 	}
 
 	return (void *)(psp_mmio + PSP_MAILBOX_OFFSET);
+}
+
+int soc_get_debug_info(struct soc_debug_info *info)
+{
+	uintptr_t psp_mmio;
+	u32 *c2pmsg;
+
+	psp_mmio = rdmsr(MSR_CU_CBBCFG).lo;
+	if (psp_mmio == 0xffffffff) {
+		printk(BIOS_WARNING, "PSP: MSR_CU_CBBCFG uninitialized\n");
+		return -1;
+	}
+
+	c2pmsg = (u32 *)(psp_mmio + PSP_DEBUG_OFFSET);
+
+	// Increment if new fields are added.
+	info->version = 1;
+
+	info->mp0_c2pmsg_0 = read32(c2pmsg);
+	info->mp0_c2pmsg_1 = read32(c2pmsg + 1);
+	info->mp0_c2pmsg_2 = read32(c2pmsg + 2);
+	info->mp0_c2pmsg_3 = read32(c2pmsg + 3);
+	info->mp0_c2pmsg_4 = read32(c2pmsg + 4);
+	info->mp0_c2pmsg_5 = read32(c2pmsg + 5);
+	info->mp0_c2pmsg_6 = read32(c2pmsg + 6);
+	info->mp0_c2pmsg_7 = read32(c2pmsg + 7);
+	info->mp0_c2pmsg_8 = read32(c2pmsg + 8);
+	info->mp0_c2pmsg_9 = read32(c2pmsg + 9);
+	info->mp0_c2pmsg_10 = read32(c2pmsg + 10);
+	info->mp0_c2pmsg_11 = read32(c2pmsg + 11);
+	info->mp0_c2pmsg_12 = read32(c2pmsg + 12);
+	info->mp0_c2pmsg_13 = read32(c2pmsg + 13);
+	info->mp0_c2pmsg_14 = read32(c2pmsg + 14);
+	info->mp0_c2pmsg_15 = read32(c2pmsg + 15);
+
+	return 0;
 }
 
 void soc_fill_smm_trig_info(struct smm_trigger_info *trig)

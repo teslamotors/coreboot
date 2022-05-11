@@ -23,6 +23,7 @@ int variant_has_nvme(void)
 
 #define INFOZ_HG_TEST_PIN	(21)
 #define INFOZ_CD_TEST_PIN	(4)
+#define INFOZ_HGCD_TEST_PIN	(4)
 
 enum infoz_hw_rev variant_get_rev(void)
 {
@@ -45,9 +46,22 @@ enum infoz_hw_rev variant_get_rev(void)
 	/* Restore gpio control setting */
 	gpio_write32(INFOZ_HG_TEST_PIN, gpio_reg);
 
-	if (gpio_level == 0)
-		rev = INFOZ_HW_REV_HGA;
-	else {
+	if (gpio_level == 0) {
+		gpio_reg = gpio_read32(INFOZ_HGCD_TEST_PIN);
+
+		/* Distinguish Rev HG-C vs Rev HG-D. Pin is pulled low on Rev HG-D */
+		gpio_input(INFOZ_HGCD_TEST_PIN);
+		udelay(1);
+		gpio_level = gpio_get(INFOZ_HGCD_TEST_PIN);
+
+		if (gpio_level == 0)
+			rev = INFOZ_HW_REV_HGD;
+		else
+			rev = INFOZ_HW_REV_HGA;
+
+		/* Restore gpio control setting */
+		gpio_write32(INFOZ_HGCD_TEST_PIN, gpio_reg);
+	} else {
 		/* Save gpio control setting */
 		gpio_reg = gpio_read32(INFOZ_CD_TEST_PIN);
 
@@ -90,7 +104,12 @@ int variant_get_flags(void)
 		flags |= INFOZ_OLD_REAR_TOUCH_RESET;
 		break;
 	case INFOZ_HW_REV_HGA:
+		flags |= INFOZ_NEEDS_ESPI_RESET;
+		flags |= INFOZ_HAS_DGPU_PWREN_GPIO_108;
+		/* Fall through */
+	case INFOZ_HW_REV_HGD:
 	case INFOZ_HW_UNKNOWN:
+	default:
 		flags |= INFOZ_HAS_DGPU;
 		break;
 	}
@@ -110,6 +129,7 @@ const char *variant_board_sku(void)
 	case INFOZ_HW_REV_D:
 		return "1955000";
 	case INFOZ_HW_REV_HGA:
+	case INFOZ_HW_REV_HGD:
 	default:
 		return "1960000";
 	}

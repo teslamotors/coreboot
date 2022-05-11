@@ -508,4 +508,24 @@ static inline void aoac_write8(uint8_t reg, uint8_t value)
 	write8(acpimmio_aoac + reg, value);
 }
 
+static inline uint8_t wdt_read8(uint8_t reg)
+{
+	return read8(acpimmio_wdt + reg);
+}
+
+static inline uint16_t wdt_read16(uint8_t reg)
+{
+	return read16(acpimmio_wdt + reg);
+}
+
+static inline void wdt_write8(uint8_t reg, uint8_t value)
+{
+	write8(acpimmio_wdt + reg, value);
+}
+
+static inline void wdt_write16(uint8_t reg, uint16_t value)
+{
+	write16(acpimmio_wdt + reg, value);
+}
+
 #endif /* __AMDBLOCKS_ACPIMMIO_H__ */

@@ -66,25 +66,74 @@ void pci_write_config32(pcidev_t device, u16 reg, u32 val)
 	outl(val, 0xCFC + (reg & 3));
 }
 
-static int find_on_bus(int bus, unsigned short vid, unsigned short did,
-		       pcidev_t * dev)
+/*
+ * Return 1 if device at @bus, @slot, @func matches fields of @id.
+ *
+ * Return 0 for a valid device that does not match.
+ *
+ * Return -1 for an invalid device
+ */
+static int pci_id_match(int bus, int slot, int func, struct pci_device_id * id)
+{
+	u32 val, class_bytes;
+
+	if (id == NULL)
+		return 0;
+
+	val = pci_read_config32(PCI_DEV(bus, slot, func), REG_VENDOR_ID);
+	if (val == 0xffffffff || val == 0x00000000 ||
+	    val == 0x0000ffff || val == 0xffff0000)
+		return -1;	/* invalid device */
+
+	/* Vendor/Device ID check */
+	if (id->vendor != PCI_ANY_ID && id->vendor != (val & 0xffff))
+		return 0;
+
+	if (id->device != PCI_ANY_ID && id->device != ((val >> 16) & 0xffff))
+		return 0;
+
+	/* Subsystem vendor/ID check */
+	if (id->subvendor != PCI_ANY_ID || id->subdevice != PCI_ANY_ID) {
+		val = pci_read_config32(PCI_DEV(bus, slot, func),
+					REG_SUBSYS_VENDOR_ID);
+
+		if (id->subvendor != PCI_ANY_ID && id->subvendor != (val & 0xffff))
+			return 0;
+
+		if (id->subdevice != PCI_ANY_ID && id->subdevice != ((val >> 16) & 0xffff))
+			return 0;
+	}
+
+	/* Class check */
+	if (id->class_mask != 0x0) {
+		val = pci_read_config32(PCI_DEV(bus, slot, func),
+					REG_REVISION_ID);
+
+		/* Group class code, subclass, Prog IF together */
+		class_bytes = (val >> 8) & id->class_mask;
+		if ((id->class & id->class_mask) != class_bytes)
+			return 0;
+	}
+
+	/* Device matches */
+	return 1;
+}
+
+static int find_on_bus(int bus, struct pci_device_id * id, pcidev_t * dev)
 {
 	int devfn;
-	u32 val;
 	unsigned char hdr;
 
 	for (devfn = 0; devfn < 0x100; devfn++) {
 		int func = devfn & 0x7;
 		int slot = (devfn >> 3) & 0x1f;
+		int match;
 
-		val = pci_read_config32(PCI_DEV(bus, slot, func),
-					REG_VENDOR_ID);
-
-		if (val == 0xffffffff || val == 0x00000000 ||
-		    val == 0x0000ffff || val == 0xffff0000)
+		match = pci_id_match(bus, slot, func, id);
+		if (match < 0) {
+			/* invalid device */
 			continue;
-
-		if (val == ((did << 16) | vid)) {
+		} else if (match == 1) {
 			*dev = PCI_DEV(bus, slot, func);
 			return 1;
 		}
@@ -103,7 +152,7 @@ static int find_on_bus(int bus, unsigned short vid, unsigned short did,
 			 * the old bus (insert lame The Who joke here) */
 
 			if ((busses != bus) &&
-			    find_on_bus(busses, vid, did, dev))
+			    find_on_bus(busses, id, dev))
 				return 1;
 		}
 	}
@@ -113,7 +162,30 @@ static int find_on_bus(int bus, unsigned short vid, unsigned short did,
 
 int pci_find_device(u16 vid, u16 did, pcidev_t * dev)
 {
-	return find_on_bus(0, vid, did, dev);
+	struct pci_device_id id = {
+		.vendor = vid,
+		.device = did,
+		.subvendor = PCI_ANY_ID,
+		.subdevice = PCI_ANY_ID,
+		.class_mask = 0x0,
+		.class = 0x0,
+	};
+
+	return find_on_bus(0, &id, dev);
+}
+
+int pci_find_class(u8 class, u8 subclass, pcidev_t * dev)
+{
+	struct pci_device_id id = {
+		.vendor = PCI_ANY_ID,
+		.device = PCI_ANY_ID,
+		.subvendor = PCI_ANY_ID,
+		.subdevice = PCI_ANY_ID,
+		.class_mask = 0xffff00,
+		.class = (class << 16) | (subclass << 8),
+	};
+
+	return find_on_bus(0, &id, dev);
 }
 
 u32 pci_read_resource(pcidev_t dev, int bar)

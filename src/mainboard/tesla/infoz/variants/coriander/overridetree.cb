@@ -26,4 +26,20 @@ chip soc/amd/picasso
 		subsystemid 0x1022 0x1510 inherit
 	end # domain
 
+	device mmio 0xfedc5000 on
+		chip drivers/i2c/generic
+			register "hid" = ""NVT51923""
+			register "cid" = ""NVT51923""
+			register "desc" = ""Novatek Touch Device""
+			register "uid" = "1"
+			register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[0].name" = ""irq-gpio""
+			register "property_list[0].integer" = "395"
+			register "property_list[1].type" = "ACPI_DP_TYPE_INTEGER"
+			register "property_list[1].name" = ""reset-gpio""
+			register "property_list[1].integer" = "278"
+			register "property_count" = "2"
+			device i2c 01 omit_early end
+		end
+	end
 end	# chip soc/amd/picasso

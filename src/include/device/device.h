@@ -124,6 +124,8 @@ struct device {
 	unsigned int    hidden : 1;
 	/* set if this device is used even in minimum PCI cases */
 	unsigned int    mandatory : 1;
+	/* set if device's chip info is not needed in bootblock/romstage */
+	unsigned int    omit_early : 1;
 	u8 command;
 	uint16_t hotplug_buses; /* Number of hotplug buses to allocate */
 

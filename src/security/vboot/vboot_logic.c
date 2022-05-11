@@ -6,6 +6,7 @@
 #include <fmap.h>
 #include <security/tpm/tspi/crtm.h>
 #include <security/tpm/tss/vendor/cr50/cr50.h>
+#include <security/vboot/firmware_stash.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/vbnv.h>
 #include <security/vboot/tpm_common.h>
@@ -139,9 +140,23 @@ static int handle_digest_result(void *slot_hash, size_t slot_hash_sz)
 	return 0;
 }
 
+/* platform has no stash for rw firmware */
+uint8_t *__weak platform_get_firmware_stash(void)
+{
+	BUG();
+	return NULL;
+}
+
+size_t __weak platform_firmware_stash_size(void)
+{
+	BUG();
+	return 0;
+}
+
 static vb2_error_t hash_body(struct vb2_context *ctx,
 			     struct region_device *fw_body)
 {
+	uint8_t *firmware_stash;
 	uint64_t load_ts;
 	uint32_t remaining;
 	uint8_t block[TODO_BLOCK_SIZE];
@@ -167,6 +182,15 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 	remaining = region_device_sz(fw_body);
 	offset = 0;
 
+	if (CONFIG(VBOOT_STASH_FIRMWARE)){
+		if (platform_firmware_stash_size() < remaining)
+			return VB2_ERROR_MISC;
+
+		firmware_stash = platform_get_firmware_stash();
+		if (firmware_stash == NULL)
+			return VB2_ERROR_MISC;
+	}
+
 	/* Start the body hash */
 	rv = vb2api_init_hash(ctx, VB2_HASH_TAG_FW_BODY);
 	if (rv)
@@ -186,6 +210,10 @@ static vb2_error_t hash_body(struct vb2_context *ctx,
 		rv = vb2api_extend_hash(ctx, block, block_size);
 		if (rv)
 			return rv;
+
+		if (CONFIG(VBOOT_STASH_FIRMWARE)) {
+			memcpy(firmware_stash + offset, block, block_size);
+		}
 
 		remaining -= block_size;
 		offset += block_size;

@@ -557,7 +557,7 @@ static uintptr_t write_coreboot_table(uintptr_t rom_table_end)
 	/* Add board-specific table entries, if any. */
 	lb_board(head);
 
-#if CONFIG(CHROMEOS_RAMOOPS)
+#if CONFIG(CHROMEOS_RAMOOPS) || CONFIG(PSP_PERSISTENT_MEM_AS_RAM_OOPS)
 	lb_ramoops(head);
 #endif
 

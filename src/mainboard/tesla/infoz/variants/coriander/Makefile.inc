@@ -5,16 +5,15 @@
 
 bootblock-$(CONFIG_BOARD_TESLA_CORIANDER) += helpers.c
 
-ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
-verstage-$(CONFIG_BOARD_TESLA_CORIANDER) += gpio_coriander.c
-endif
-
 romstage-$(CONFIG_BOARD_TESLA_CORIANDER) += gpio_coriander.c
 romstage-$(CONFIG_BOARD_TESLA_CORIANDER) += helpers.c
 
 ramstage-$(CONFIG_BOARD_TESLA_CORIANDER) += gpio_coriander.c
 ramstage-$(CONFIG_BOARD_TESLA_CORIANDER) += fsps_coriander.c
 ramstage-$(CONFIG_BOARD_TESLA_CORIANDER) += helpers.c
+
+smm-$(CONFIG_BOARD_TESLA_CORIANDER) += gpio_coriander.c
+smm-$(CONFIG_BOARD_TESLA_CORIANDER) += helpers.c
 
 # Add OEM ID table
 ifeq ($(CONFIG_USE_OEM_BIN),y)

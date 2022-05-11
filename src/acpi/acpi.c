@@ -393,7 +393,12 @@ static void acpi_create_tpm2(acpi_tpm2_t *tpm2)
 
 	/* Fill out header fields. */
 	memcpy(header->signature, "TPM2", 4);
+
+#if CONFIG(CRB_USE_CUSTOM_OEM_ID)
+	memcpy(header->oem_id, CONFIG_CRB_CUSTOM_OEM_ID, 6);
+#else
 	memcpy(header->oem_id, OEM_ID, 6);
+#endif
 	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
 	memcpy(header->asl_compiler_id, ASLC, 4);
 

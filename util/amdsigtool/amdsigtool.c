@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <zlib.h>
+#include <dirent.h>
 
 #define ARRAY_SIZE(a) (sizeof((a)) / sizeof((a)[0]))
 
@@ -20,12 +21,47 @@
 typedef enum _amd_psp_type {
 	AMD_PSP_PUBKEY = 0,
 	AMD_PSP_BOOTLOADER = 1,
+	AMD_PSP_SECURED_OS = 2,
+	AMD_PSP_RECOVERY = 3,
+	AMD_PSP_NVRAM = 4,
+	AMD_PSP_SMU_FIRMWARE = 8,
+	AMD_PSP_SECURE_DEBUG_PUBKEY = 9,
+	AMD_PSP_FUSE_CHAIN = 0xb,
+	AMD_PSP_TRUSTLETS = 0xc,
+	AMD_PSP_TRUSTLETKEY = 0xd,
+	AMD_PSP_SMU_FIRMWARE2 = 0x12,
+	AMD_PSP_SECURE_DEBUG = 0x13,
+	AMD_PSP_WRAPPED_IKEK = 0x21,
+	AMD_PSP_TOKEN_UNLOCK = 0x22,
+	AMD_PSP_SEC_GASKET = 0x24,
+	AMD_PSP_MP2_FW = 0x25,
+	AMD_PSP_DRIVERS = 0x28,
+	AMD_PSP_ABL0 = 0x30,
+	AMD_PSP_ABL1 = 0x31,
+	AMD_PSP_ABL2 = 0x32,
+	AMD_PSP_ABL3 = 0x33,
+	AMD_PSP_ABL4 = 0x34,
+	AMD_PSP_ABL5 = 0x35,
+	AMD_PSP_ABL6 = 0x36,
+	AMD_PSP_ABL7 = 0x37,
+	AMD_PSP_RPMC_NVRAM = 0x54,
+	AMD_PSP_SPL_TABLE = 0x55,
+	AMD_PSP_OEM_TRUSTLETS = 0x80,
+	AMD_PSP_OEM_TRUSTLETKEY = 0x81,
 } amd_psp_type;
 
 typedef enum _amd_bios_type {
 	AMD_BIOS_PUBKEY = 0x05,
 	AMD_BIOS_SIG = 0x07,
+	AMD_BIOS_APCB = 0x60,
+	AMD_BIOS_APOB = 0x61,
 	AMD_BIOS_BIN = 0x62,
+	AMD_BIOS_APOB_NV = 0x63,
+	AMD_BIOS_PMUI = 0x64,
+	AMD_BIOS_PMUD = 0x65,
+	AMD_BIOS_UCODE = 0x66,
+	AMD_BIOS_APCB_BK = 0x68,
+	AMD_BIOS_MP2_CFG = 0x6a,
 } amd_bios_type;
 
 typedef struct _embedded_firmware {
@@ -83,6 +119,39 @@ typedef struct _compression_hdr {
 	uint32_t rsvd2[58];
 }  __attribute__((packed)) compression_hdr;
 
+typedef struct _psp_image_hdr {
+	uint8_t nonce[16];
+	uint32_t version;
+	uint32_t fw_size;
+	uint32_t enc_opt;
+	uint32_t enc_algo;
+	uint8_t enc_iv[16];
+	uint32_t sig_opt;
+	uint32_t sig_algo;
+	uint8_t sig_key_id[16];
+	uint32_t comp_opt;
+	uint32_t spl;
+	uint32_t uncomp_size;
+	uint32_t comp_size;
+	uint64_t comp_param;
+	uint32_t fw_version;
+	uint32_t unk_0;
+	uint32_t unk_1;
+	uint32_t image_size;
+	uint32_t fw_unsigned_size;
+	uint32_t unk_2;
+	uint32_t unk_3;
+	uint8_t type;
+	uint8_t subprog;
+	uint8_t unk_4;
+	uint8_t unk_5;
+	uint8_t enc_key[16];
+	uint8_t sign_info[16];
+	uint8_t spec_info[32];
+	uint8_t dbg_enc_key[16];
+	uint8_t pad[48];
+}  __attribute__((packed)) psp_image_hdr;
+
 struct rom {
 	int fd;
 	uint32_t base;
@@ -91,35 +160,42 @@ struct rom {
 	bios_directory_hdr bios_hdr;
 };
 
-static const char *optstring  = "r:ud:b:p:s:k:l:h";
+static const char *optstring  = "r:ud:b:p:s:k:l:f:h";
 
 static struct option long_options[] = {
-	{"rom",         required_argument, 0, 'r' },
-	{"update",      no_argument,       0, 'u' },
-	{"bios-dir",    required_argument, 0, 'd' },
-	{"bios-bin",    required_argument, 0, 'b' },
-	{"bios-pubkey", required_argument, 0, 'p' },
-	{"bios-sig",    required_argument, 0, 's' },
-	{"root-pubkey", required_argument, 0, 'k' },
-	{"bootloader",  required_argument, 0, 'l' },
-	{"help",        no_argument,       0, 'h' },
-	{NULL,          0,                 0,  0  }
+	{"rom",             required_argument, 0, 'r' },
+	{"update",          no_argument,       0, 'u' },
+	{"bios-dir",        required_argument, 0, 'd' },
+	{"bios-bin",        required_argument, 0, 'b' },
+	{"bios-pubkey",     required_argument, 0, 'p' },
+	{"bios-sig",        required_argument, 0, 's' },
+	{"root-pubkey",     required_argument, 0, 'k' },
+	{"bootloader",      required_argument, 0, 'l' },
+	{"trustlet-pubkey", required_argument, 0, 't' },
+	{"firmware",        required_argument, 0, 'f' },
+	{"help",            no_argument,       0, 'h' },
+	{NULL,              0,                 0,  0  }
 };
 
 static char tmp_path[PATH_MAX+1];
+static unsigned char empty_sig_id[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static unsigned char invalid_sig_id[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 static void usage(void)
 {
 	printf("amdsigtool: Sign AMD BIOS image\n");
 	printf("Usage: amdsigtool [options]\n");
 	printf("-r | --rom <FILE>                 Coreboot ROM\n");
-	printf("-u | --update                     Update BIOS image(s)\n");
+	printf("-u | --update                     Update image(s)\n");
 	printf("-d | --bios-dir <FILE>            BIOS directory table\n");
 	printf("-b | --bios-bin <FILE>            BIOS binary image\n");
 	printf("-p | --bios-pubkey <FILE>         BIOS public key token\n");
 	printf("-s | --bios-sig <FILE>            BIOS signature\n");
 	printf("-k | --root-pubkey <FILE>         Root public key token\n");
 	printf("-l | --bootloader <FILE>          PSP bootloader\n");
+	printf("-f | --firmware <DIR>             PSP firmware images directory\n");
 	printf("-h | --help                       Show this help\n");
 }
 
@@ -130,8 +206,24 @@ static const char *bios_type_to_string(amd_bios_type type)
 		return "pubkey";
 	case AMD_BIOS_SIG:
 		return "sig";
+	case AMD_BIOS_APCB:
+		return "apcb";
+	case AMD_BIOS_APOB:
+		return "apob";
 	case AMD_BIOS_BIN:
 		return "bin";
+	case AMD_BIOS_APOB_NV:
+		return "apob-nvram";
+	case AMD_BIOS_PMUI:
+		return "pmu-instructions";
+	case AMD_BIOS_PMUD:
+		return "pmu-data";
+	case AMD_BIOS_UCODE:
+		return "microcode";
+	case AMD_BIOS_APCB_BK:
+		return "apcb-backup";
+	case AMD_BIOS_MP2_CFG:
+		return "mp2-config";
 	default:
 		return "unknown";
 	}
@@ -144,6 +236,60 @@ static const char *psp_type_to_string(amd_psp_type type)
 		return "pubkey";
 	case AMD_PSP_BOOTLOADER:
 		return "bootloader";
+	case AMD_PSP_SECURED_OS:
+		return "secure-os";
+	case AMD_PSP_RECOVERY:
+		return "recovery";
+	case AMD_PSP_NVRAM:
+		return "nvram";
+	case AMD_PSP_SMU_FIRMWARE:
+		return "smu";
+	case AMD_PSP_SECURE_DEBUG_PUBKEY:
+		return "debug-pubkey";
+	case AMD_PSP_FUSE_CHAIN:
+		return "fuse-chain";
+	case AMD_PSP_TRUSTLETS:
+		return "trustlets";
+	case AMD_PSP_TRUSTLETKEY:
+		return "trustlet-pubkey";
+	case AMD_PSP_SMU_FIRMWARE2:
+		return "smu2";
+	case AMD_PSP_SECURE_DEBUG:
+		return "secure-debug";
+	case AMD_PSP_WRAPPED_IKEK:
+		return "ikek";
+	case AMD_PSP_TOKEN_UNLOCK:
+		return "unlock-token";
+	case AMD_PSP_SEC_GASKET:
+		return "security-gasket";
+	case AMD_PSP_MP2_FW:
+		return "mp2";
+	case AMD_PSP_DRIVERS:
+		return "drivers";
+	case AMD_PSP_ABL0:
+		return "abl0";
+	case AMD_PSP_ABL1:
+		return "abl1";
+	case AMD_PSP_ABL2:
+		return "abl2";
+	case AMD_PSP_ABL3:
+		return "abl3";
+	case AMD_PSP_ABL4:
+		return "abl4";
+	case AMD_PSP_ABL5:
+		return "abl5";
+	case AMD_PSP_ABL6:
+		return "abl6";
+	case AMD_PSP_ABL7:
+		return "abl7";
+	case AMD_PSP_RPMC_NVRAM:
+		return "rpmc-nvram";
+	case AMD_PSP_SPL_TABLE:
+		return "spl-table";
+	case AMD_PSP_OEM_TRUSTLETS:
+		return "oem-trustlets";
+	case AMD_PSP_OEM_TRUSTLETKEY:
+		return "oem-trustlet-pubkey";
 	default:
 		return "unknown";
 	}
@@ -800,20 +946,15 @@ out:
 	return tmp_path;
 }
 
-static int update_psp_entry(struct rom *rom, amd_psp_type type, const char *path)
+static int set_psp_entry(struct rom *rom, psp_directory_entry *entries, amd_psp_type type, const char *path)
 {
-	int ret = -1;
-	psp_directory_entry *entries = NULL;
+	int ret;
 	psp_directory_entry *entry;
-
-	entries = read_psp_dir_entries(rom);
-	if (!entries)
-		return -1;
 
 	entry = find_psp_dir_entry(rom, entries, type);
 	if (!entry) {
 		fprintf(stderr, "ERROR: PSP entry not found\n");
-		goto out;
+		return -1;
 	}
 
 	printf("PSP %s: 0x%lx 0x%x\n", psp_type_to_string(type), entry->addr - rom->base, entry->size);
@@ -821,36 +962,42 @@ static int update_psp_entry(struct rom *rom, amd_psp_type type, const char *path
 	ret = write_psp_dir_entry(rom, entry, path);
 	if (ret) {
 		fprintf(stderr, "ERROR: failed to write PSP entry\n");
-		goto out;
+		return -1;
 	}
 
-	ret = 0;
-out:
-	if (entries)
-		free(entries);
+	return 0;
+}
+
+static int update_psp_entry(struct rom *rom, amd_psp_type type, const char *path)
+{
+	int ret = -1;
+	psp_directory_entry *entries = NULL;
+
+	entries = read_psp_dir_entries(rom);
+	if (!entries)
+		return -1;
+
+	ret = set_psp_entry(rom, entries, type, path);
+
+	free(entries);
 	return ret;
 }
 
-static int update_bios_entry(struct rom *rom, amd_bios_type type, const char *path)
+static int set_bios_entry(struct rom *rom, bios_directory_entry *entries, amd_bios_type type, const char *path)
 {
 	int ret = -1;
-	bios_directory_entry *entries = NULL;
 	bios_directory_entry *entry;
-
-	entries = read_bios_dir_entries(rom);
-	if (!entries)
-		return -1;
 
 	entry = find_bios_dir_entry(rom, entries, type);
 	if (!entry) {
 		fprintf(stderr, "ERROR: BIOS entry not found\n");
-		goto out;
+		return -1;
 	}
 
 	if (entry->compressed) {
 		path = compress_file(path);
 		if (!path)
-			goto out;
+			return -1;
 	}
 
 	printf("BIOS %s: 0x%lx 0x%x\n", bios_type_to_string(type), entry->source - rom->base, entry->size);
@@ -858,13 +1005,24 @@ static int update_bios_entry(struct rom *rom, amd_bios_type type, const char *pa
 	ret = write_bios_dir_entry(rom, entry, path);
 	if (ret) {
 		fprintf(stderr, "ERROR: failed to write BIOS entry\n");
-		goto out;
+		return -1;
 	}
 
-	ret = 0;
-out:
-	if (entries)
-		free(entries);
+	return 0;
+}
+
+static int update_bios_entry(struct rom *rom, amd_bios_type type, const char *path)
+{
+	int ret = -1;
+	bios_directory_entry *entries = NULL;
+
+	entries = read_bios_dir_entries(rom);
+	if (!entries)
+		return -1;
+
+	ret = set_bios_entry(rom, entries, type, path);
+
+	free(entries);
 	return ret;
 }
 
@@ -920,6 +1078,220 @@ static int do_bios_entry(struct rom *rom, amd_bios_type type, const char *path, 
 	return 0;
 }
 
+static int psp_image_signed(psp_image_hdr *hdr)
+{
+	if (hdr->sig_opt != 1)
+		return 0;
+	if (hdr->sig_algo != 0)
+		return 0;
+	if (memcmp(hdr->sig_key_id, empty_sig_id, sizeof(empty_sig_id)) == 0)
+		return 0;
+	if (memcmp(hdr->sig_key_id, invalid_sig_id, sizeof(invalid_sig_id)) == 0)
+		return 0;
+	return 1;
+}
+
+
+static char *find_firmware_image(const char *path, psp_image_hdr *match)
+{
+	DIR *dir;
+	struct dirent *entry;
+	size_t len;
+	uint8_t sig_key_id[16];
+	char img_path[PATH_MAX];
+	int fd = -1;
+	psp_image_hdr img;
+	ssize_t n;
+	char *ret = NULL;
+
+	dir = opendir(path);
+	if (!dir) {
+		fprintf(stderr, "ERROR: failed to open directory %s\n", path);
+		return NULL;
+	}
+
+	memcpy(sig_key_id, match->sig_key_id, sizeof(sig_key_id));
+	memset(match->sig_key_id, 0, sizeof(match->sig_key_id));
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_type != DT_REG)
+			continue;
+
+		len = strlen(entry->d_name);
+		if (len < 3 || strcmp(entry->d_name + (len - 3), "bin"))
+			continue;
+
+		snprintf(img_path, sizeof(img_path), "%s/%s", path, entry->d_name);
+
+		fd = open(img_path, O_RDONLY);
+		if (fd == -1) {
+			fprintf(stderr, "ERROR: failed to open firmware image %s\n", entry->d_name);
+			goto out;
+		}
+
+		n = read(fd, &img, sizeof(img));
+		if (n == -1) {
+			fprintf(stderr, "ERROR: failed to read firmware image %s\n", entry->d_name);
+			goto out;
+		}
+
+		close(fd);
+		fd = -1;
+
+		if (n != sizeof(img))
+			continue;
+
+		memset(&img.sig_key_id, 0, sizeof(img.sig_key_id));
+		if (memcmp(&img, match, sizeof(img)) == 0) {
+			ret = strdup(img_path);
+			break;
+		}
+	}
+
+out:
+	if (fd != -1)
+		close(fd);
+	closedir(dir);
+	memcpy(match->sig_key_id, sig_key_id, sizeof(sig_key_id));
+	return ret;
+}
+
+static int update_psp_images(struct rom *rom, const char *dir)
+{
+	int ret = -1;
+	unsigned int i;
+	psp_directory_entry *entries = NULL;
+	psp_directory_entry *entry;
+	psp_image_hdr *img;
+	char *path;
+
+	entries = read_psp_dir_entries(rom);
+	if (!entries)
+		goto out;
+
+	for (i = 0; i < rom->psp_hdr.num_entries; i++) {
+		entry = &entries[i];
+
+		if (entry->size == 0xffffffff) {
+			fprintf(stderr, "WARN: skipping empty PSP entry %s %d\n", psp_type_to_string(entry->type), entry->subprog);
+			continue;
+		}
+
+		if (entry->size < sizeof(*img)) {
+			fprintf(stderr, "WARN: skipping non-firmware PSP entry %s %d\n", psp_type_to_string(entry->type), entry->subprog);
+			continue;
+		}
+
+		img = read_psp_dir_entry(rom, entry);
+		if (!img) {
+			fprintf(stderr, "ERROR: failed to read PSP entry %s %d\n", psp_type_to_string(entry->type), entry->subprog);
+			goto out;
+		}
+
+		if (!psp_image_signed(img)) {
+			fprintf(stderr, "WARN: skipping unsigned PSP entry %s %d\n", psp_type_to_string(entry->type), entry->subprog);
+			continue;
+		}
+
+		path = find_firmware_image(dir, img);
+		if (!path) {
+			fprintf(stderr, "WARN: no PSP %s %d image found\n", psp_type_to_string(entry->type), entry->subprog);
+			continue;
+		}
+
+		printf("Replacing PSP %s %d with %s\n", psp_type_to_string(entry->type), entry->subprog, path);
+
+		ret = write_psp_dir_entry(rom, entry, path);
+		free(path);
+		if (ret)
+			goto out;
+	}
+
+out:
+	if (entries)
+		free(entries);
+	return ret;
+}
+
+static int update_bios_images(struct rom *rom, const char *dir)
+{
+	int ret = -1;
+	unsigned int i;
+	bios_directory_entry *entries = NULL;
+	bios_directory_entry *entry;
+	psp_image_hdr *img;
+	char *path;
+
+	entries = read_bios_dir_entries(rom);
+	if (!entries)
+		goto out;
+
+	for (i = 0; i < rom->bios_hdr.num_entries; i++) {
+		entry = &entries[i];
+
+		if (entry->size == 0) {
+			fprintf(stderr, "WARN: skipping empty BIOS entry %s %d%d\n", bios_type_to_string(entry->type), entry->subprog, entry->inst);
+			continue;
+		}
+
+		if (entry->size < sizeof(*img)) {
+			fprintf(stderr, "WARN: skipping non-firmware BIOS entry %s %d%d\n", bios_type_to_string(entry->type), entry->subprog, entry->inst);
+			continue;
+		}
+
+		img = read_bios_dir_entry(rom, entry);
+		if (!img) {
+			fprintf(stderr, "ERROR: failed to read BIOS entry %s %d%d\n", bios_type_to_string(entry->type), entry->subprog, entry->inst);
+			goto out;
+		}
+
+		if (!psp_image_signed(img)) {
+			fprintf(stderr, "WARN: skipping unsigned BIOS entry %s %d%d\n", bios_type_to_string(entry->type), entry->subprog, entry->inst);
+			free(img);
+			continue;
+		}
+
+		path = find_firmware_image(dir, img);
+		free(img);
+		if (!path) {
+			fprintf(stderr, "WARN: no BIOS %s %d%d image found\n", bios_type_to_string(entry->type), entry->subprog, entry->inst);
+			continue;
+		}
+
+		printf("Replacing BIOS %s %d%d with %s\n", bios_type_to_string(entry->type), entry->subprog, entry->inst, path);
+
+		ret = write_bios_dir_entry(rom, entry, path);
+		free(path);
+		if (ret)
+			goto out;
+	}
+
+out:
+	if (entries)
+		free(entries);
+	return ret;
+}
+
+static int do_firmware(struct rom *rom, const char *path, int update)
+{
+	int ret;
+
+	if (!update) {
+		fprintf(stderr, "ERROR: only update supported for firwmare\n");
+		return -1;
+	}
+
+	ret = update_psp_images(rom, path);
+	if (ret)
+		return -1;
+
+	ret = update_bios_images(rom, path);
+	if (ret)
+		return -1;
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int c;
@@ -933,6 +1305,8 @@ int main(int argc, char **argv)
 	const char *bios_sig_path = NULL;
 	const char *root_pubkey_path = NULL;
 	const char *bootloader_path = NULL;
+	const char *trustlet_pubkey_path = NULL;
+	const char *firmware_path = NULL;
 	struct rom rom;
 
 	while (1) {
@@ -965,6 +1339,12 @@ int main(int argc, char **argv)
 			break;
 		case 'l':
 			bootloader_path = optarg;
+			break;
+		case 't':
+			trustlet_pubkey_path = optarg;
+			break;
+		case 'f':
+			firmware_path = optarg;
 			break;
 		case 'h':
 			usage();
@@ -1020,6 +1400,18 @@ int main(int argc, char **argv)
 
 	if (bootloader_path) {
 		ret = do_psp_entry(&rom, AMD_PSP_BOOTLOADER, bootloader_path, update);
+		if (ret)
+			goto done;
+	}
+
+	if (trustlet_pubkey_path) {
+		ret = do_psp_entry(&rom, AMD_PSP_OEM_TRUSTLETKEY, trustlet_pubkey_path, update);
+		if (ret)
+			goto done;
+	}
+
+	if (firmware_path) {
+		ret = do_firmware(&rom, firmware_path, update);
 		if (ret)
 			goto done;
 	}

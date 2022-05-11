@@ -11,11 +11,7 @@ ramstage-y += sku_id.c
 ramstage-y += gpio.c
 ramstage-y += security.c
 ramstage-y += board_utils.c
-
-ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
-verstage-y += memlayout.ld
-verstage-y += verstage.c
-endif
+ramstage-y += dxio.c
 
 smm-y += smihandler.c
 

@@ -3,3 +3,15 @@ comment "InfoZ"
 config BOARD_TESLA_CORIANDER
 	bool "->  Coriander"
 	select BOARD_TESLA_INFOZ
+
+config BOARD_TESLA_KINGBIRD
+	bool "->  Kingbird"
+	select BOARD_TESLA_INFOZ
+
+config BOARD_TESLA_SEMI
+	bool "->  Semi"
+	select BOARD_TESLA_INFOZ
+
+config BOARD_TESLA_SPINACH
+	bool "->  Spinach"
+	select BOARD_TESLA_INFOZ

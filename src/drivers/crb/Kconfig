@@ -33,3 +33,17 @@ config CRB_TPM_ACPI_START_METHOD
 	default n
 	help
 	  Use TPM2 ACPI Start Method
+
+config CRB_USE_CUSTOM_OEM_ID
+	bool
+	default n
+	help
+	  Use a Custom OEM ID in the ACPI device header.
+
+config CRB_CUSTOM_OEM_ID
+	string
+	default "OEM_ID"
+	help
+	  The custom OEM ID string to populate the TPM2 ACPI header with.
+	  OEM_ID must be 6 characters long per the spec of the RSDP structure.
+

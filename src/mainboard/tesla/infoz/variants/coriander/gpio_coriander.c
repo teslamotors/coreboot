@@ -21,7 +21,7 @@ static const struct soc_amd_gpio coriander_rev_cd_override[] = {
 	PAD_GPO(GPIO_16, HIGH),
 
 	/* Pin BB16: SER1-REAR-TOUCH-nRESET_R */
-	PAD_GPO(GPIO_144, HIGH),
+	PAD_GPI(GPIO_144, PULL_UP),
 };
 
 /* Rev HG-A */
@@ -36,7 +36,7 @@ static const struct soc_amd_gpio coriander_hg_override[] = {
 	PAD_GPO(GPIO_21, LOW),
 
 	/* Pin BA13: SER1-REAR-TOUCH-NRESET */
-	PAD_GPO(GPIO_22, HIGH),
+	PAD_GPI(GPIO_22, PULL_UP),
 
 	/* Pin BB16: GPU-SOC-CTEMP-FAULT */
 	PAD_GPI(GPIO_144, PULL_DOWN),
@@ -58,12 +58,54 @@ const struct soc_amd_gpio *variant_override_gpio_table(size_t *size)
 		*size = ARRAY_SIZE(coriander_rev_cd_override);
 		return coriander_rev_cd_override;
 	case INFOZ_HW_REV_HGA:
+	case INFOZ_HW_REV_HGD:
 		*size = ARRAY_SIZE(coriander_hg_override);
 		return coriander_hg_override;
 	case INFOZ_HW_UNKNOWN:
 	default:
 		printk(BIOS_WARNING,
 			"Unknown board revision, GPIO configuration may be broken\n");
+		*size = 0;
+		return NULL;
+	}
+}
+
+static const struct soc_amd_gpio coriander_rev_cd_gpio_sleep_table[] = {
+	/*
+	 * Pin BB16: SER1-REAR-TOUCH-nRESET_R
+	 * Drive low to avoid leakage to serializer during S3.
+	 */
+	PAD_GPO(GPIO_144, LOW),
+};
+
+static const struct soc_amd_gpio coriander_rev_hg_gpio_sleep_table[] = {
+	/*
+	 * Pin BA13: SER1-REAR-TOUCH-NRESET
+	 * Drive low to avoid leakage to serializer during S3.
+	 */
+	PAD_GPO(GPIO_22, LOW),
+};
+
+
+const struct soc_amd_gpio *variant_sleep_gpio_table(size_t *size, int slp_typ)
+{
+	enum infoz_hw_rev hw_rev;
+
+	hw_rev = variant_get_rev();
+
+	switch (hw_rev) {
+	case INFOZ_HW_REV_C:
+	case INFOZ_HW_REV_D:
+		*size = ARRAY_SIZE(coriander_rev_cd_gpio_sleep_table);
+		return coriander_rev_cd_gpio_sleep_table;
+	case INFOZ_HW_REV_HGA:
+	case INFOZ_HW_REV_HGD:
+		*size = ARRAY_SIZE(coriander_rev_hg_gpio_sleep_table);
+		return coriander_rev_hg_gpio_sleep_table;
+	case INFOZ_HW_UNKNOWN:
+	default:
+		printk(BIOS_WARNING,
+			"Unknown board revision, Sleep GPIO configuration may be broken\n");
 		*size = 0;
 		return NULL;
 	}

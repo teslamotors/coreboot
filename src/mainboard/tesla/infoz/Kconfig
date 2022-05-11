@@ -34,12 +34,14 @@ config BOARD_SPECIFIC_OPTIONS
 	select HAVE_ACPI_RESUME
 	select DRIVERS_USB_ACPI
 	select PSP_LOAD_MP2_FW
+	select PSP_PERSISTENT_MEM_AS_RAM_OOPS
 	select PSP_PLATFORM_SECURE_BOOT
 	select AMD_FW_UNCOMPRESSED_BIOS_BIN
 	select SPI_FLASH_DONT_INCLUDE_ALL_DRIVERS
 	select SPI_FLASH_STMICRO
 	select SOC_AMD_COMMON_BLOCK_SPI_ALT
 	select SOC_AMD_BIOSRAM_PANIC_MSG
+	select PSP_OEM_TRUSTLETKEY
 
 config FMDFILE
 	string
@@ -52,10 +54,22 @@ config MAINBOARD_DIR
 config VARIANT_DIR
 	string
 	default "coriander" if BOARD_TESLA_CORIANDER
+	default "kingbird" if BOARD_TESLA_KINGBIRD
+	default "semi" if BOARD_TESLA_SEMI
+	default "spinach" if BOARD_TESLA_SPINACH
 
 config MAINBOARD_PART_NUMBER
 	string
 	default "Coriander" if BOARD_TESLA_CORIANDER
+	default "Kingbird" if BOARD_TESLA_KINGBIRD
+	default "Semi" if BOARD_TESLA_SEMI
+	default "Spinach" if BOARD_TESLA_SPINACH
+
+config FAILURE_ANALYSIS
+	bool "failure analysis build"
+	default n
+	help
+	  build with failure-analysis-specific logic
 
 config DEVICETREE
 	string
@@ -83,18 +97,31 @@ config VGA_BIOS_FILE
 
 # Boards with V1807B can't use the Picasso VBIOS
 config VGA_BIOS_SECOND_ID
-        string
-        default "1002,15dd,81"
+	string
+	default "1002,15dd,81"
 
 config VGA_BIOS_SECOND_FILE
-        string
-        default "3rdparty/amd_blobs/picasso/RavenGenericVbios.bin"
+	string
+	default "3rdparty/amd_blobs/picasso/RavenGenericVbios.bin"
 
 config CRB_TPM_BASE_ADDRESS
 	hex
 	default 0xfd1104d0
 	help
 	  Base Address of the CRB TPM Command Structure
+
+config CRB_USE_CUSTOM_OEM_ID
+	bool
+	default y
+	help
+	  Use a Custom OEM ID in the TPM2 ACPI header.
+
+config CRB_CUSTOM_OEM_ID
+	string
+	default "AMDTPM"
+	help
+	 The custom OEM ID string to populate the TPM2 ACPI Header
+	 OEM_ID must be 6 characters long per the spec of the RSDP structure.
 
 config VBOOT
 	select VBOOT_STARTS_IN_BOOTBLOCK
@@ -106,6 +133,7 @@ config VBOOT
 	select VBOOT_REFUSE_RECOVERY
 	select VBOOT_ALWAYS_ENABLE_DISPLAY
 	select VBOOT_DISABLE_SHA1
+	select VBOOT_VERIFY_RW_ON_LOAD
 
 config VBOOT_FWID_VERSION
 	string
@@ -114,6 +142,10 @@ config VBOOT_FWID_VERSION
 config VBOOT_VBNV_OFFSET
 	hex
 	default 0x2A
+
+config VBOOT_FW_STASH_SIZE
+	hex
+	default 0x500000
 
 config CHROMEOS
 	# Use default libpayload config
@@ -125,11 +157,17 @@ config AMD_FWM_POSITION_INDEX
 
 config AMD_PUBKEY_FILE
 	string
-	default "3rdparty/amd_blobs/picasso/PSP/tesla/infoz/AmdPubKeyRV.bin"
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/coriander/AmdPubKeyRV.bin" if BOARD_TESLA_CORIANDER
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/kingbird/AmdPubKeyRV.bin" if BOARD_TESLA_KINGBIRD
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/semi/AmdPubKeyRV.bin" if BOARD_TESLA_SEMI
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/spinach/AmdPubKeyRV.bin" if BOARD_TESLA_SPINACH
 
 config PSP_BOOTLOADER_FILE
 	string
-	default "3rdparty/amd_blobs/picasso/PSP/tesla/infoz/PspBootLoader_prod_RV.sbin"
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/coriander/PspBootLoader_prod_RV.sbin" if BOARD_TESLA_CORIANDER
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/kingbird/PspBootLoader_prod_RV.sbin" if BOARD_TESLA_KINGBIRD
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/semi/PspBootLoader_prod_RV.sbin" if BOARD_TESLA_SEMI
+	default "3rdparty/amd_blobs/picasso/PSP/tesla/spinach/PspBootLoader_prod_RV.sbin" if BOARD_TESLA_SPINACH
 
 config DRIVER_TPM_I2C_BUS
 	hex
@@ -163,39 +201,43 @@ config VARIANT_BOARD_VER_FW_CONFIG_VALID
 	  Which board version did FW_CONFIG become valid in CBI.
 
 config EFS_SPI_READ_MODE
-       int
-       default 0 if EM100	# Normal read mode
-       default 5		# Quad IO (1-4-4)
+	int
+	default 0 if EM100	# Normal read mode
+	default 5		# Quad IO (1-4-4)
 
 config EFS_SPI_SPEED
-       int
-       default 3 if EM100	# 16.66 MHz
-       default 0		# 66.66 MHz
+	int
+	default 3 if EM100	# 16.66 MHz
+	default 0		# 66.66 MHz
 
 config EFS_SPI_MICRON_FLAG
-       int
-       default 1		# Board always uses Micron parts
+	int
+	default 1		# Board always uses Micron parts
 
 config SPI_FLASH_STMICRO_SE32K
-       bool
-       default n
+	bool
+	default n
 
 config SPI_FLASH_STMICRO_SE64K
-       bool
-       default n
+	bool
+	default n
 
 config SPI_FLASH_STMICRO_SE256K
-       bool
-       default n
+	bool
+	default n
 
 config RW_REGION_ONLY
-        string
-        depends on VBOOT
-        default "fallback/romstage cpu_microcode_blob.bin fallback/ramstage config revision fallback/dsdt.aml fspm.bin fsps.bin pci1002,15d8,c1.rom pci1002,15dd,81.rom fallback/payload bootsplash.jpg"
+	string
+	depends on VBOOT
+	default "fallback/romstage cpu_microcode_blob.bin fallback/ramstage config revision fallback/dsdt.aml fspm.bin fsps.bin pci1002,15d8,c1.rom pci1002,15dd,81.rom fallback/payload bootsplash.jpg"
 
 # dGPU-related nodes require more space than provided by default
 config MAX_ACPI_TABLE_SIZE_KB
-        int
-        default 176
+	int
+	default 176
+
+config REQUIRE_PLATFORM_SECURE_BOOT
+	bool "Require Platform Secure Boot"
+	default y
 
 endif # BOARD_TESLA_INFOZ

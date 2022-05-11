@@ -43,15 +43,21 @@
 #define PCIE_4_RST		0
 
 /* Power enable pins */
-#define SOC_NVME_EN		GPIO_8
-#define SOC_WIFI_EN		GPIO_42
-#define SOC_GPU_EN		GPIO_108
+#define SOC_NVME_EN				GPIO_8
+#define SOC_WIFI_EN				GPIO_42
+#define SOC_WIFI_QCA_WLAN_REG	GPIO_23
+#define SOC_WIFI_QCA_BT_REG		GPIO_24
+#define SOC_GPU_EN_GPIO_108		GPIO_108
+#define SOC_GPU_EN_GPIO_4		GPIO_4
 
 /* Board ID pins */
 #define GPIO_BOARD_ID_0		GPIO_130
 #define GPIO_BOARD_ID_1		GPIO_69
 #define GPIO_BOARD_ID_2		GPIO_70
 #define GPIO_BOARD_ID_3		GPIO_116
+/* Bits 4 and 5 only usable for variants with INFOZ_BOARD_ID_6BIT flag */
+#define GPIO_BOARD_ID_4		GPIO_6
+#define GPIO_BOARD_ID_5		GPIO_21
 
 #define GPIO_BOOT_BANK_SEL	GPIO_115
 #define GPIO_BOOT_RECOVERY	GPIO_84

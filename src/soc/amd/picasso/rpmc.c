@@ -6,6 +6,8 @@
 #include <soc/amd/common/block/psp/psp_def.h>
 #include <soc/rpmc.h>
 #include <types.h>
+#include <delay.h>
+#include "cc6.h"
 
 #define CAP_RPMC_SUPPORTED	BIT(1)
 
@@ -71,7 +73,13 @@ int rpmc_provision(bool lock)
 
 	printk(BIOS_DEBUG, "RPMC: Enable%s... ", lock ? " and lock" : "");
 
+	cc6_disable();
+	/* Give cores in CC6 a chance to exit */
+	mdelay(100);
+
 	cmd_status = send_psp_command(MBOX_BIOS_CMD_SET_RPMC_ADDRESS, &buffer);
+
+	cc6_enable();
 
 	psp_print_cmd_status(cmd_status, &buffer.header);
 

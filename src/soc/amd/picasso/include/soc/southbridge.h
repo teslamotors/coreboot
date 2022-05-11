@@ -23,8 +23,16 @@
 
 /* Power management registers:  0xfed80300 or index/data at IO 0xcd6/cd7 */
 #define PM_DECODE_EN			0x00
+#define   WDT_OPTIONS			(BIT(26) | BIT(27))
+#define     WDT_OPTIONS_EN		(0 << 26)
+#define   WDT_FREQ				(BIT(24) | BIT(25))
+#define     WDT_FREQ_32USEC		(0 << 24)
+#define     WDT_FREQ_10MSEC		(1 << 24)
+#define     WDT_FREQ_100MSEC	(2 << 24)
+#define     WDT_FREQ_1SEC		(3 << 24)
+#define   WDT_IO_EN				BIT(7)
 #define   SMBUS_ASF_IO_EN		BIT(4)
-#define   CF9_IO_EN			BIT(1)
+#define   CF9_IO_EN				BIT(1)
 #define   LEGACY_IO_EN			BIT(0)
 #define SMB_ASF_IO_BASE			0x01 /* part of PM_DECODE_EN in PPR */
 #define PM_ISA_CONTROL			0x04
@@ -143,6 +151,17 @@
 #define SMBSLVDAT			0xc
 #define SMBTIMING			0xe
 
+/* WDT MMIO offsets 0xfed80b00 */
+#define WDT_CTL				0x00
+#define   WDT_CTL_TRIGGER	BIT(7)
+#define   WDT_CTL_DISABLE   BIT(3)
+#define   WDT_CTL_ACTION    BIT(2)
+#define   WDT_CTL_FIRED		BIT(1)
+#define   WDT_CTL_RUN_STOP  BIT(0)
+#define WDT_CNT				0x04
+#define   WDT_CNT_MAX		0xFFFF
+
+
 /* FCH MISC Registers 0xfed80e00 */
 #define GPP_CLK_CNTRL			0x00
 #define   GPP_CLK0_REQ_SHIFT		0
@@ -194,6 +213,7 @@
 #define AOAC_DEV_D3_STATE(device)	(AOAC_DEV_D3_CTL(device) + 1)
 
 #define FCH_AOAC_DEV_CLK_GEN		0
+#define FCH_AOAC_DEV_LPC		4
 #define FCH_AOAC_DEV_I2C2		7
 #define FCH_AOAC_DEV_I2C3		8
 #define FCH_AOAC_DEV_I2C4		9
@@ -290,6 +310,7 @@ bool is_aoac_device_enabled(unsigned int dev);
 void power_on_aoac_device(unsigned int dev);
 void power_off_aoac_device(unsigned int dev);
 void wait_for_aoac_enabled(unsigned int dev);
+void wait_for_aoac_disabled(unsigned int dev);
 void sb_clk_output_48Mhz(void);
 void sb_enable(struct device *dev);
 void southbridge_final(void *chip_info);
@@ -297,6 +318,7 @@ void southbridge_init(void *chip_info);
 void fch_pre_init(void);
 void fch_early_init(void);
 void fch_blink_rate(enum fch_blink_setting rate);
+void fch_wdt_kick(uint16_t timeout_sec);
 void set_uart_legacy_config(unsigned int uart_idx, unsigned int range_idx);
 
 /* Initialize all the i2c buses that are marked with early init. */

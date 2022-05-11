@@ -731,6 +731,7 @@ static struct device *new_device_with_path(struct bus *parent,
 	new_d->enabled = status & 0x01;
 	new_d->hidden = (status >> 1) & 0x01;
 	new_d->mandatory = (status >> 2) & 0x01;
+	new_d->omit_early = (status >> 3) & 0x01;
 	new_d->chip_instance = chip_instance;
 
 	set_new_child(parent, new_d);
@@ -1123,6 +1124,7 @@ static void pass1(FILE *fil, FILE *head, struct device *ptr, struct device *next
 	fprintf(fil, "\t.enabled = %d,\n", ptr->enabled);
 	fprintf(fil, "\t.hidden = %d,\n", ptr->hidden);
 	fprintf(fil, "\t.mandatory = %d,\n", ptr->mandatory);
+	fprintf(fil, "\t.omit_early = %d,\n", ptr->omit_early);
 	fprintf(fil, "\t.on_mainboard = 1,\n");
 	if (ptr->subsystem_vendor > 0)
 		fprintf(fil, "\t.subsystem_vendor = 0x%04x,\n",
@@ -1164,9 +1166,18 @@ static void pass1(FILE *fil, FILE *head, struct device *ptr, struct device *next
 	if (chip_ins == &mainboard_instance)
 		fprintf(fil, "\t.name = mainboard_name,\n");
 	fprintf(fil, "#endif\n");
+
+	/* information that can be omitted for omit_early devices */
+	if (ptr->omit_early)
+		fprintf(fil, "#if !DEVTREE_EARLY /* omit_early */\n");
+
 	if (chip_ins->chip->chiph_exists)
 		fprintf(fil, "\t.chip_info = &%s_info_%d,\n",
 			chip_ins->chip->name_underscore, chip_ins->id);
+
+	if (ptr->omit_early)
+		fprintf(fil, "#endif /* omit_early */\n");
+
 	if (next)
 		fprintf(fil, "\t.next=&%s,\n", next->name);
 	if (ptr->smbios_slot_type || ptr->smbios_slot_data_width ||

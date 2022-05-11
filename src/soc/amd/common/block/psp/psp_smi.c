@@ -37,30 +37,13 @@ static const char *id_to_region_name(u64 id)
  */
 static int lookup_store(u64 id, struct region_device *rstore)
 {
-	static struct region_device read_rdev, write_rdev;
-	static struct incoherent_rdev store_irdev;
 	const char *name;
-	struct region region;
-	const struct region_device *rdev;
 
 	name = id_to_region_name(id);
 	if (!name)
 		return -1;
 
-	if (fmap_locate_area(name, &region))
-		return -1;
-
-	if (boot_device_ro_subregion(&region, &read_rdev) < 0)
-		return -1;
-
-	if (boot_device_rw_subregion(&region, &write_rdev) < 0)
-		return -1;
-
-	rdev = incoherent_rdev_init(&store_irdev, &region, &read_rdev, &write_rdev);
-	if (rdev == NULL)
-		return -1;
-
-	return rdev_chain(rstore, rdev, 0, region_device_sz(rdev));
+	return fmap_locate_area_as_rdev_rw(name, rstore);
 }
 
 static int spi_available(void)

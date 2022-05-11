@@ -11,15 +11,23 @@
 
 enum infoz_hw_rev {
 	INFOZ_HW_UNKNOWN = 0,
+	INFOZ_HW_REV_A,
+	INFOZ_HW_REV_B,
 	INFOZ_HW_REV_C,
 	INFOZ_HW_REV_D,
+	INFOZ_HW_REV_G,
 	INFOZ_HW_REV_HGA,
+	INFOZ_HW_REV_HGD,
 };
 
 enum infoz_hw_flags {
 	INFOZ_HAS_DGPU = BIT(0),
 	INFOZ_FIXUP_GPIO_EXP_RESET = BIT(1),
 	INFOZ_OLD_REAR_TOUCH_RESET = BIT(2),
+	INFOZ_BOARD_ID_6BIT = BIT(3),
+	INFOZ_HAS_DGPU_PWREN_GPIO_108 = BIT(4),
+	INFOZ_NEEDS_ESPI_RESET = BIT(5),
+	INFOZ_QCA_WIFI_BT = BIT(6),
 };
 
 enum infoz_boot_bank {
@@ -29,10 +37,15 @@ enum infoz_boot_bank {
 };
 
 /* PCIe peripherals - arbitrarily assigned flag bits for internal usage */
-#define INFOZ_PERIPH_COUNT	3
-#define INFOZ_PERIPH_NVME	(BIT(0))
-#define INFOZ_PERIPH_WIFI	(BIT(1))
-#define INFOZ_PERIPH_GPU	(BIT(2))
+#define INFOZ_PERIPH_COUNT				5
+#define INFOZ_PERIPH_NVME				(BIT(0))
+#define INFOZ_PERIPH_WIFI				(INFOZ_PERIPH_WIFI_BCM | INFOZ_PERIPH_WIFI_QCA)
+#define INFOZ_PERIPH_WIFI_BCM			(BIT(1))
+#define INFOZ_PERIPH_WIFI_QCA			(BIT(2))
+#define INFOZ_PERIPH_GPU				(INFOZ_PERIPH_GPU_PWREN_GPIO_108 | INFOZ_PERIPH_GPU_PWREN_GPIO_4)
+#define INFOZ_PERIPH_GPU_PWREN_GPIO_108	(BIT(3))
+#define INFOZ_PERIPH_GPU_PWREN_GPIO_4	(BIT(4))
+
 #define INFOZ_PERIPH_ALL	((1 << INFOZ_PERIPH_COUNT) - 1)
 
 const struct sci_source *get_gpe_table(size_t *num);
@@ -51,6 +64,13 @@ const struct soc_amd_gpio *variant_base_gpio_table(size_t *size);
  * configuration provided by variant_base_gpio_table().
  */
 const struct soc_amd_gpio *variant_override_gpio_table(size_t *size);
+
+/*
+ * This function provides GPIO table for the pads that need to be configured when entering
+ * sleep.
+ */
+const struct soc_amd_gpio *variant_sleep_gpio_table(size_t *size, int slp_typ);
+
 void variant_romstage_entry(void);
 /* Modify devictree settings during ramstage. */
 void variant_devtree_update(void);

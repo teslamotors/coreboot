@@ -10,6 +10,10 @@
 #define PSP_SHAREDMEM_DRAM_START(addr)		SYMBOL(psp_sharedmem_dram, addr)
 #define PSP_SHAREDMEM_DRAM_END(addr)		SYMBOL(epsp_sharedmem_dram, addr)
 
+#define VBOOT_FW_STASH(addr, sz) \
+		SYMBOL(vboot_fw_stash, addr) \
+		_evboot_fw_stash = _vboot_fw_stash + sz;
+
 /*
  *
  *                     +--------------------------------+
@@ -21,6 +25,15 @@
  *                     |                                |
  *                     |                                |
  *   reserved_dram_end +--------------------------------+
+ *                     |         pstore/ramoops         |
+ *                     |    (PSP_PERSISTENT_MEM_SIZE)   |
+ *                     +--------------------------------+ PSP_PERSISTENT_MEM_BASE
+ *                     |          Unused hole           |
+ *                     +--------------------------------+
+ *                     |                                |
+ *                     |         vboot fw stash         |
+ *                     |      (VBOOT_FW_STASH_SIZE)     |
+ *                     +--------------------------------+ VBOOT_FW_STASH_ADDR
  *                     |                                |
  *                     |       verstage (if reqd)       |
  *                     |          (VERSTAGE_SIZE)       |
@@ -94,6 +107,14 @@ SECTIONS
 	REGION(fspm, CONFIG_FSP_M_ADDR, CONFIG_FSP_M_SIZE, 1)
 #if CONFIG(VBOOT_SEPARATE_VERSTAGE)
 	VERSTAGE(CONFIG_VERSTAGE_ADDR, CONFIG_VERSTAGE_SIZE)
+#endif
+
+#if CONFIG(VBOOT_VERIFY_RW_ON_LOAD)
+	VBOOT_FW_STASH(CONFIG_VBOOT_FW_STASH_ADDR, CONFIG_VBOOT_FW_STASH_SIZE)
+#endif
+
+#if CONFIG(PSP_PERSISTENT_MEM_AS_RAM_OOPS) && (CONFIG_PSP_PERSISTENT_MEM_BASE < CONFIG_RAMBASE)
+	REGION(psp_pmem, CONFIG_PSP_PERSISTENT_MEM_BASE, CONFIG_PSP_PERSISTENT_MEM_SIZE, 1M)
 #endif
 
 	EARLY_RESERVED_DRAM_END(.)

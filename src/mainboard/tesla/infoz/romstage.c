@@ -8,6 +8,9 @@
 /* mainboard romstage entry point before FSP-M */
 void mainboard_romstage_entry_s3(int s3_resume)
 {
+	/* Disable WDT */
+	fch_wdt_kick(0);
+
 	printk(BIOS_SPEW, "infoz romstage entry: s3_resume=%d\n", s3_resume);
 
 	if (!s3_resume) {

@@ -100,6 +100,19 @@ typedef u32 pcidev_t;
 #define PCI_SLOT(_d) ((_d >> 11) & 0x1f)
 #define PCI_FUNC(_d) ((_d >> 8) & 0x7)
 
+#define PCI_ANY_ID	(~0)
+
+/*
+ * Structure identifying PCI device(s), for use in searching/matching.
+ *
+ * Vendor/device fields may be set to PCI_ANY_ID to match any value.
+ */
+struct pci_device_id {
+	u32 vendor, device;
+	u32 subvendor, subdevice;
+	u32 class, class_mask;
+};
+
 u8 pci_read_config8(u32 device, u16 reg);
 u16 pci_read_config16(u32 device, u16 reg);
 u32 pci_read_config32(u32 device, u16 reg);
@@ -109,6 +122,7 @@ void pci_write_config16(u32 device, u16 reg, u16 val);
 void pci_write_config32(u32 device, u16 reg, u32 val);
 
 int pci_find_device(u16 vid, u16 did, pcidev_t *dev);
+int pci_find_class(u8 class, u8 subclass, pcidev_t * dev);
 u32 pci_read_resource(pcidev_t dev, int bar);
 
 void pci_set_bus_master(pcidev_t dev);

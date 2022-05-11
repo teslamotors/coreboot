@@ -140,6 +140,7 @@ struct device_operations picasso_i2c_mmio_ops = {
 	.scan_bus = scan_smbus,
 	.acpi_name = i2c_acpi_name,
 	.acpi_fill_ssdt = dw_i2c_acpi_fill_ssdt,
+	.ops_i2c_bus = &dw_i2c_bus_ops,
 };
 
 /*

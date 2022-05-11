@@ -22,4 +22,8 @@ void global_smi_enable(void)
 
 	if (!acpi_is_wakeup_s3())
 		outb(APM_CNT_SMMINFO, APM_CNT);
+
+#if (CONFIG(SOC_AMD_COMMON_BLOCK_PSP_SMI))
+	outb(APM_CNT_PSPSMI, APM_CNT);
+#endif
 }

@@ -4,6 +4,7 @@
 #include <acpi/acpigen.h>
 #include <console/console.h>
 #include <device/i2c_simple.h>
+#include <device/i2c_bus.h>
 #include <device/device.h>
 #include <device/path.h>
 #include <gpio.h>
@@ -176,9 +177,43 @@ static const char *i2c_generic_acpi_name(const struct device *dev)
 }
 #endif
 
+static void i2c_generic_dev_enable(struct device *dev)
+{
+	struct drivers_i2c_generic_config *config = dev->chip_info;
+	struct i2c_reg_init *reg_init;
+	int i, res;
+
+	if (!config)
+		return;
+
+	/* Don't initialize regs on s3 resume */
+	if (acpi_is_wakeup_s3())
+		return;
+
+	if (config->reg_init_count > 0)
+		printk(BIOS_INFO, "%s: Initializing registers\n", dev_path(dev));
+
+	for (i = 0; i < config->reg_init_count; i++) {
+		reg_init = &config->reg_init_list[i];
+		/* Only byte write initializations currently supported */
+		if (reg_init->size != 1) {
+			printk(BIOS_WARNING, "%s: WARNING: Ignoring reg init of unsupported size %d\n", dev_path(dev), reg_init->size);
+			continue;
+		}
+
+		res = i2c_dev_writeb_at(dev, reg_init->reg, (uint8_t) reg_init->val);
+		if (res != 0) {
+			printk(BIOS_WARNING, "%s: WARNING: Error %d initializing reg 0x%02x\n", dev_path(dev), res, reg_init->reg);
+			printk(BIOS_WARNING, "%s: WARNING: Device in unknown state\n", dev_path(dev));
+			return;
+		}
+	}
+}
+
 static struct device_operations i2c_generic_ops = {
 	.read_resources		= noop_read_resources,
 	.set_resources		= noop_set_resources,
+	.enable			= i2c_generic_dev_enable,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name		= i2c_generic_acpi_name,
 	.acpi_fill_ssdt		= i2c_generic_fill_ssdt_generator,

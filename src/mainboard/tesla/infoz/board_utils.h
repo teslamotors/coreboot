@@ -47,6 +47,8 @@ int infoz_dgpu_power_good(void);
 
 void infoz_disable_dgpu_devs(void);
 
+void infoz_dgpu_update_gpio(void);
+
 void infoz_common_devtree_update(void);
 
 #endif /* __INFOZ_BOARD_UTILS_H__ */

@@ -9,6 +9,7 @@
 #include <fmap.h>
 #include <lib.h>
 #include <security/tpm/tspi/crtm.h>
+#include <security/vboot/firmware_stash.h>
 #include <security/vboot/vboot_common.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,14 +24,27 @@
 #define DEBUG(x...)
 #endif
 
+int __weak cbfs_get_boot_device_stash(struct region_device **rdev)
+{
+	/* platform has not specified a boot device stash */
+	BUG();
+	return -1;
+}
+
 int cbfs_boot_locate(struct cbfsf *fh, const char *name, uint32_t *type)
 {
 	struct region_device rdev;
 
-	if (cbfs_boot_region_device(&rdev))
+	struct region_device *rdevp = &rdev;
+
+	if (cbfs_boot_region_device(rdevp))
 		return -1;
 
-	int ret = cbfs_locate(fh, &rdev, name, type);
+	if (CONFIG(VBOOT_STASH_FIRMWARE))
+		if (cbfs_get_boot_device_stash(&rdevp))
+			return -1;
+
+	int ret = cbfs_locate(fh, rdevp, name, type);
 
 	if (CONFIG(VBOOT_ENABLE_CBFS_FALLBACK) && ret) {
 

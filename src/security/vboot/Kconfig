@@ -292,6 +292,14 @@ config VBOOT_REFUSE_RECOVERY
 	  to exit to recovery mode and refuse to report COREBOOT as boot region.
 	  This does not change post-verstage hooks for checking recovery status.
 
+config VBOOT_STASH_FIRMWARE
+	def_bool n
+	help
+	  Stash the vboot firmware at the end of verstage via board-specific
+	  functions. This allows for the cbfs to be loaded from an alternate
+	  location than the original boot media. This is useful in cases where
+	  the boot device itself is not tamper-resistant but an alternate device is.
+
 config VBOOT_DISABLE_SHA1
 	bool "Build vboot without sha1 support"
 	default n

@@ -3,7 +3,9 @@
  * Security fusing functions for InfoZ platform
  */
 
+#include <amdblocks/psp.h>
 #include <amdblocks/reset.h>
+#include <amdblocks/psp.h>
 #include <amdblocks/spi.h>
 #include <bootstate.h>
 #include <boot_device.h>
@@ -12,17 +14,61 @@
 #include <soc/psb.h>
 #include <soc/rpmc.h>
 
+#if CONFIG(FAILURE_ANALYSIS)
+static void enforce_board_demotion(void *unused) {
+	int ret;
+	struct psb_fuse_config cfg;
+	uint32_t customer_key_lock;
+	uint32_t root_key_select;
+
+	ret = psp_get_psb_fuse_config(&cfg);
+	if (ret != 0) {
+		printk(BIOS_ERR, "PSB: Failed to get config: %d\n", ret);
+		cold_reset();
+	}
+
+	customer_key_lock = (cfg.config >> 28) & 1;
+	root_key_select = (cfg.config >> 16) & 0xFF;
+	if (customer_key_lock != 1 || root_key_select != 0x08) {
+		printk(BIOS_ERR, "PSB: board is not demoted: \
+				customer_key_lock=%#x, root_key_select=%#x\n",
+				customer_key_lock, root_key_select);
+		cold_reset();
+	}
+}
+BOOT_STATE_INIT_ENTRY(BS_POST_DEVICE, BS_ON_EXIT, enforce_board_demotion, NULL);
+#endif
+
 static void enable_secure_boot(void *unused)
 {
 	int ret;
+	struct psb_fuse_config psb;
 
 	ret = psb_enable();
 	if (ret) {
+		if (!CONFIG(REQUIRE_PLATFORM_SECURE_BOOT)) {
+			if (ret != 1)
+				return;
+		}
 		printk(BIOS_NOTICE, "PSB: Rebooting\n");
 		cold_reset();
 	}
 
-	psb_update_anti_rollback();
+	ret = psp_get_psb_fuse_config(&psb);
+	if (ret != 0) {
+		printk(BIOS_ERR, "PSB: Failed to get config: %d\n", ret);
+		return;
+	}
+
+	// Ensure rollback protection is enabled on all hardware but not
+	// incremented on engineering hardware.
+	if (!(psb.config & PSB_CONFIG_CUSTOMER_KEY_LOCK_BIT))
+		psb_update_anti_rollback();
+// Avoid in-field fusing until fusing failures are root caused.
+#if 0
+	else if (psb.bios_key_rev_id > 0)
+		psb_update_anti_rollback();
+#endif
 }
 
 BOOT_STATE_INIT_ENTRY(BS_PAYLOAD_LOAD, BS_ON_ENTRY, enable_secure_boot, NULL);

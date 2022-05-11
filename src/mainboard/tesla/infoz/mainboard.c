@@ -127,12 +127,20 @@ static void mainboard_configure_gpios(void)
 uint32_t board_id(void)
 {
 	MAYBE_STATIC_NONZERO uint32_t id = BOARD_ID_INIT;
+	int flags;
 
-	if (id == BOARD_ID_INIT)
+	if (id == BOARD_ID_INIT) {
+		flags = variant_get_flags();
+
 		id = (gpio_get(GPIO_BOARD_ID_0) << 0) |
 		     (gpio_get(GPIO_BOARD_ID_1) << 1) |
 		     (gpio_get(GPIO_BOARD_ID_2) << 2) |
 		     (gpio_get(GPIO_BOARD_ID_3) << 3);
+
+		if (flags & INFOZ_BOARD_ID_6BIT)
+			id |= (gpio_get(GPIO_BOARD_ID_4) << 4) |
+			      (gpio_get(GPIO_BOARD_ID_5) << 5);
+	}
 
 	return id;
 }
@@ -143,9 +151,13 @@ const char *smbios_mainboard_version(void)
 
 	hw_rev = variant_get_rev();
 	switch (hw_rev) {
+	case INFOZ_HW_REV_A:	return "A";
+	case INFOZ_HW_REV_B:	return "B";
 	case INFOZ_HW_REV_C:	return "C";
 	case INFOZ_HW_REV_D:	return "D";
+	case INFOZ_HW_REV_G:	return "G";
 	case INFOZ_HW_REV_HGA:	return "HG-A";
+	case INFOZ_HW_REV_HGD:	return "HG-D";
 	case INFOZ_HW_UNKNOWN:
 	default:
 		return "Unknown";
@@ -157,17 +169,18 @@ static void mainboard_init(void *chip_info)
 	int boardid;
 
 	boardid = board_id();
+	printk(BIOS_NOTICE, "Board name: %s\n", smbios_mainboard_product_name());
 	printk(BIOS_NOTICE, "Board ID: %d\n", boardid);
 	printk(BIOS_NOTICE, "Board revision: %s\n", smbios_mainboard_version());
-
-	/* Power on PCIe peripherals */
-	variant_pcie_devs_power(1);
 
 	/* IOMUX pad config alone is insufficient to disable some LPC functions */
 	lpc_disable_ldrq0();
 	lpc_disable_clk1(1, 1);
 
 	mainboard_configure_gpios();
+
+	/* Power on PCIe peripherals */
+	variant_pcie_devs_power(1);
 
 	/* Update DUT configuration */
 	variant_devtree_update();

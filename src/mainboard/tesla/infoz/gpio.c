@@ -11,6 +11,7 @@
 #include <acpi/acpi_device.h>
 #include <console/console.h>
 #include <amdblocks/acpimmio.h>
+#include <bootmode.h>
 
 /*
  * InfoZ early GPIO settings - set in bootblock
@@ -23,6 +24,10 @@ static const struct soc_amd_gpio infoz_early_gpio_table[] = {
 	/* Pin AW10: SOC-DISP-2-PWR-EN / SOC-HDMI-MUX */
 	/* Required early for board rev detection */
 	PAD_GPI(GPIO_4, PULL_NONE),
+
+	/* Pin AU10: SOC-DISP-1-PWR-EN - Center */
+	/* Required early for board rev detection */
+	PAD_GPI(GPIO_6, PULL_NONE),
 
 	/* Pin AR6: SOC-SER-2-PWR-EN */
 	/* Keep low to avoid SPI REQ/GNT contention */
@@ -179,7 +184,7 @@ static const struct soc_amd_gpio infoz_gpio_set_stage_ram[] = {
 	PAD_NF(GPIO_11, BLINK, PULL_NONE),
 
 	/* Pin AN6: SOC-HEARTBEAT-LED */
-	PAD_GPI(GPIO_12, PULL_NONE),
+	PAD_GPO(GPIO_12, HIGH),
 
 	/* Pin AT12: SOC-nRST-P3V3-GPIO-EXP-1 */
 	PAD_GPO(GPIO_13, HIGH),
@@ -332,8 +337,17 @@ struct soc_amd_gpio *variant_base_gpio_table(size_t *size)
 
 /* PCIe peripheral power enables */
 static struct acpi_gpio gpio_nvme_pwr_en = ACPI_GPIO_OUTPUT(SOC_NVME_EN);
-static struct acpi_gpio gpio_wifi_pwr_en = ACPI_GPIO_OUTPUT(SOC_WIFI_EN);
-static struct acpi_gpio gpio_gpu_pwr_en = ACPI_GPIO_OUTPUT(SOC_GPU_EN);
+static struct acpi_gpio gpio_wifi_bcm_pwr_en = ACPI_GPIO_OUTPUT(SOC_WIFI_EN);
+static struct acpi_gpio gpio_wifi_qca_pwr_en = {
+	.type = ACPI_GPIO_TYPE_IO,
+	.pull = ACPI_GPIO_PULL_DEFAULT,
+	.io_restrict = ACPI_GPIO_IO_RESTRICT_OUTPUT,
+	.active_low = 0,
+	.pin_count = 3,
+	.pins = { SOC_WIFI_EN, SOC_WIFI_QCA_WLAN_REG, SOC_WIFI_QCA_BT_REG },
+};
+static struct acpi_gpio gpio_gpu_pwr_en_gpio_108 = ACPI_GPIO_OUTPUT(SOC_GPU_EN_GPIO_108);
+static struct acpi_gpio gpio_gpu_pwr_en_gpio_4 = ACPI_GPIO_OUTPUT(SOC_GPU_EN_GPIO_4);
 
 /* PCIe peripheral reset lines */
 static struct acpi_gpio gpio_pcie_nrst0 =
@@ -361,28 +375,47 @@ static struct acpi_power_res_params gpio_nvme_pwr_timing = {
 	.enable_delay_ms = 75,		/* 25ms ramp up + 50ms tPVPGL */
 };
 
-static struct acpi_power_res_params gpio_wifi_pwr_timing = {
+static struct acpi_power_res_params gpio_wifi_bcm_pwr_timing = {
 	.reset_gpio = &gpio_pcie_nrst0,
 	.reset_delay_ms = 1,
 	.reset_off_delay_ms = 10,
-	.enable_gpio = &gpio_wifi_pwr_en,
+	.enable_gpio = &gpio_wifi_bcm_pwr_en,
 	.enable_delay_ms = 34,
 };
 
-static struct acpi_power_res_params gpio_gpu_pwr_timing = {
+static struct acpi_power_res_params gpio_wifi_qca_pwr_timing = {
+	.reset_gpio = &gpio_pcie_nrst0,
+	.reset_delay_ms = 1,
+	.reset_off_delay_ms = 10,
+	.enable_gpio = &gpio_wifi_qca_pwr_en,
+	.enable_delay_ms = 34,
+};
+
+static struct acpi_power_res_params gpio_gpu_pwr_gpio_108_timing = {
 	.reset_gpio = &gpio_pcie_nrst_gpu,
 	.reset_delay_ms = 100,		/* tRST-SEQ-A */
 	.reset_off_delay_ms = 0,
 	.enable_off_delay_ms = 20,	/* tRAMP-DOWN */
-	.enable_gpio = &gpio_gpu_pwr_en,
+	.enable_gpio = &gpio_gpu_pwr_en_gpio_108,
+	.enable_delay_ms = 120,		/* 20ms ramp up + 100ms PERST */
+};
+
+static struct acpi_power_res_params gpio_gpu_pwr_gpio_4_timing = {
+	.reset_gpio = &gpio_pcie_nrst_gpu,
+	.reset_delay_ms = 100,		/* tRST-SEQ-A */
+	.reset_off_delay_ms = 0,
+	.enable_off_delay_ms = 20,	/* tRAMP-DOWN */
+	.enable_gpio = &gpio_gpu_pwr_en_gpio_4,
 	.enable_delay_ms = 120,		/* 20ms ramp up + 100ms PERST */
 };
 
 static struct acpi_power_res_params *pcie_pwr_timings[] = {
 	/* Order of array must match INFOZ_PERIPH_* definitions */
 	&gpio_nvme_pwr_timing,
-	&gpio_wifi_pwr_timing,
-	&gpio_gpu_pwr_timing,
+	&gpio_wifi_bcm_pwr_timing,
+	&gpio_wifi_qca_pwr_timing,
+	&gpio_gpu_pwr_gpio_108_timing,
+	&gpio_gpu_pwr_gpio_4_timing,
 	NULL,
 };
 
@@ -395,6 +428,7 @@ static struct acpi_power_res_params *pcie_pwr_timings[] = {
  *
  * This aims to be similar to an _ON method sequence.
  */
+
 static void acpi_power_on_devs(struct acpi_power_res_params *devs[],
 			       int mask)
 {
@@ -414,6 +448,14 @@ static void acpi_power_on_devs(struct acpi_power_res_params *devs[],
 		       i, p->reset_gpio->pins[0], p->enable_gpio->pins[0]);
 		gpio_output(p->reset_gpio->pins[0], 0);
 		gpio_output(p->enable_gpio->pins[0], 1);
+		/* Enable power */
+		for (int j = 1; j < p->enable_gpio->pin_count; j++) {
+			mdelay(p->enable_delay_ms);
+			printk(BIOS_SPEW, "InfoZ dev %d: [t= +%d ms] Additional power enable GPIO_%d\n",
+			       i, p->enable_delay_ms, p->enable_gpio->pins[j]);
+			gpio_output(p->enable_gpio->pins[j], 1);
+		}
+
 		/* keep track of total power on time required */
 		total_pwr_on_ms = MAX(total_pwr_on_ms,
 				      p->reset_delay_ms + p->enable_delay_ms);
@@ -492,10 +534,12 @@ static void acpi_power_off_devs(struct acpi_power_res_params *devs[],
 			if (!(mask & (1 << i)))
 				continue;
 			if (t == p->reset_off_delay_ms) {
-				printk(BIOS_SPEW, "InfoZ dev %d: [t= +%d ms] Disabling power GPIO_%d\n",
-				       i, t, p->enable_gpio->pins[0]);
-				/* disable power */
-				gpio_output(p->enable_gpio->pins[0], 0);
+				/* Disable power */
+				for (int j = p->enable_gpio->pin_count; j > 0; j--) {
+					printk(BIOS_SPEW, "InfoZ dev %d: [t= +%d ms] Disabling power GPIO_%d\n",
+					       i, t, p->enable_gpio->pins[j - 1]);
+					gpio_output(p->enable_gpio->pins[j - 1], 0);
+				}
 			}
 		}
 		mdelay(1);
@@ -505,15 +549,74 @@ static void acpi_power_off_devs(struct acpi_power_res_params *devs[],
 	printk(BIOS_SPEW, "InfoZ dev: [t = +%d ms] Power off complete\n", t);
 }
 
-/* Power on or off board's PCIe peripherals */
-void __weak variant_pcie_devs_power(int on)
+/* Return INFOZ_PERIPH_* mask with correct dGPU bits for this variant */
+static int variant_dgpu_periph_mask(void)
 {
-	int mask = INFOZ_PERIPH_ALL;
 	int flags;
 
 	flags = variant_get_flags();
 	if (!(flags & INFOZ_HAS_DGPU))
+		return 0;
+
+	/* Check for older revisions */
+	if (flags & INFOZ_HAS_DGPU_PWREN_GPIO_108)
+		return INFOZ_PERIPH_GPU_PWREN_GPIO_108;
+
+	/* Assume all boards going forward use GPIO4 */
+	return INFOZ_PERIPH_GPU_PWREN_GPIO_4;
+}
+
+/* Return INFOZ_PERIPH_* mask with correct wifi bits for this variant */
+static int variant_wifi_periph_mask(void)
+{
+	int flags;
+
+	flags = variant_get_flags();
+
+	/* Check for older revisions */
+	if (flags & INFOZ_QCA_WIFI_BT)
+		return INFOZ_PERIPH_WIFI_QCA;
+
+	/* Assume all boards uses BCM wifi/bt module */
+	return INFOZ_PERIPH_WIFI_BCM;
+}
+
+/* Power on or off board's PCIe peripherals */
+void __weak variant_pcie_devs_power(int on)
+{
+	const int dgpu_mask = variant_dgpu_periph_mask();
+	const int wifi_mask = variant_wifi_periph_mask();
+	int mask = INFOZ_PERIPH_ALL;
+
+	/* ALL mask includes multiple dGPU variants.  Mask out the wrong ones */
+	mask &= ~INFOZ_PERIPH_GPU;
+	mask |= dgpu_mask;
+
+	/* ALL mask includes multiple wifi variants.  Mask out the wrong ones */
+	mask &= ~INFOZ_PERIPH_WIFI;
+	mask |= wifi_mask;
+
+	/*
+	 * S3 with a dGPU-enabled configuration is currently buggy on wake.
+	 * Work around this by keeping dGPU off until those issues are
+	 * resolved.
+	 */
+	if (on && platform_is_resuming()) {
+		/* remove from ON mask */
 		mask &= ~INFOZ_PERIPH_GPU;
+		/* explicitly power it off as well */
+		acpi_power_off_devs(pcie_pwr_timings, dgpu_mask);
+	}
+
+	/*
+	 * Qualcomm WiFi/BT module needs to be power off first in order for
+	 * acpi_power_on_devs() to power it on with the proper sequence.
+	 */
+	if (on && (mask & INFOZ_PERIPH_WIFI_QCA)) {
+		/* explicitly power it off as well */
+		acpi_power_off_devs(pcie_pwr_timings, wifi_mask);
+		mdelay(50);
+	}
 
 	if (on)
 		acpi_power_on_devs(pcie_pwr_timings, mask);
@@ -563,4 +666,8 @@ void __weak variant_gpio_exp_reset(void)
 	udelay(GPIO_EXP_RESET_RECOVERY_US);
 }
 
+const __weak struct soc_amd_gpio *variant_sleep_gpio_table(size_t *size, int slp_typ)
+{
+	return NULL;
+}
 #endif	/* !ENV_BOOTBLOCK */

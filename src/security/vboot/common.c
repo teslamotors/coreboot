@@ -5,6 +5,7 @@
 #include <console/console.h>
 #include <fmap.h>
 #include <vb2_api.h>
+#include <security/vboot/firmware_stash.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/symbols.h>
 #include <security/vboot/vboot_common.h>
@@ -96,5 +97,13 @@ static void vboot_setup_cbmem(int unused)
 		rv = vb2api_init(wb_cbmem, cbmem_size, &vboot_ctx);
 
 	assert(rv == VB2_SUCCESS);
+
+	if (CONFIG(VBOOT_STASH_FIRMWARE)) {
+		const size_t stash_cbmem_size = platform_firmware_stash_size();
+		void *stash_cbmem = cbmem_add(CBMEM_ID_VBOOT_FW_STASH, stash_cbmem_size);
+		assert(stash_cbmem != NULL);
+		if (!CONFIG(VBOOT_STARTS_IN_ROMSTAGE))
+			memcpy(stash_cbmem, platform_get_firmware_stash(), stash_cbmem_size);
+	}
 }
 ROMSTAGE_CBMEM_INIT_HOOK(vboot_setup_cbmem)

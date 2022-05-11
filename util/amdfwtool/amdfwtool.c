@@ -316,6 +316,8 @@ typedef enum _amd_fw_type {
 	AMD_FW_IMC,
 	AMD_FW_GEC,
 	AMD_FW_XHCI,
+	AMD_FW_OEM_TRUSTLETS = 0x80,
+	AMD_FW_OEM_TRUSTLETKEY = 0x81,
 	AMD_FW_INVALID,
 } amd_fw_type;
 
@@ -374,6 +376,8 @@ static amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_FW_VERSTAGE_SIG, .level = PSP_BOTH },
 	{ .type = AMD_FW_PSP_RPMC_NVRAM, .level = PSP_LVL2 },
 	{ .type = AMD_FW_SPL_TABLE, .level = PSP_BOTH },
+	{ .type = AMD_FW_OEM_TRUSTLETS, .level = PSP_LVL2 },
+	{ .type = AMD_FW_OEM_TRUSTLETKEY, .level = PSP_LVL2 },
 	{ .type = AMD_FW_INVALID },
 };
 
@@ -493,7 +497,7 @@ typedef struct _psp_directory_table {
 	psp_directory_entry entries[];
 } __attribute__((packed)) psp_directory_table;
 
-#define MAX_PSP_ENTRIES 0x1f
+#define MAX_PSP_ENTRIES 0x23
 
 typedef struct _psp_combo_header {
 	uint32_t cookie;
@@ -1124,6 +1128,8 @@ enum {
 	LONGOPT_SPL_TABLE	= 263,
 	LONGOPT_RPMC_NVRAM_BASE	= 264,
 	LONGOPT_RPMC_NVRAM_SIZE	= 265,
+	LONGOPT_OEM_TRUSTLETS	= 266,
+	LONGOPT_OEM_TRUSTLETKEY	= 267,
 };
 
 // Unused values: D
@@ -1166,6 +1172,8 @@ static struct option long_options[] = {
 	{"spl-table",        required_argument, 0, LONGOPT_SPL_TABLE },
 	{"rpmc-nvram-base",  required_argument, 0, LONGOPT_RPMC_NVRAM_BASE },
 	{"rpmc-nvram-size",  required_argument, 0, LONGOPT_RPMC_NVRAM_SIZE },
+	{"oem-trustlets",    required_argument, 0, LONGOPT_OEM_TRUSTLETS },
+	{"oem-trustletkey",  required_argument, 0, LONGOPT_OEM_TRUSTLETKEY },
 	/* BIOS Directory Table items */
 	{"instance",         required_argument, 0, 'I' },
 	{"apcb",             required_argument, 0, 'a' },
@@ -1520,6 +1528,15 @@ int main(int argc, char **argv)
 			break;
 		case 'u':
 			register_fw_filename(AMD_FW_PSP_TRUSTLETKEY,
+								sub, optarg);
+			sub = instance = 0;
+			break;
+		case LONGOPT_OEM_TRUSTLETS:
+			register_fw_filename(AMD_FW_OEM_TRUSTLETS, sub, optarg);
+			sub = instance = 0;
+			break;
+		case LONGOPT_OEM_TRUSTLETKEY:
+			register_fw_filename(AMD_FW_OEM_TRUSTLETKEY,
 								sub, optarg);
 			sub = instance = 0;
 			break;

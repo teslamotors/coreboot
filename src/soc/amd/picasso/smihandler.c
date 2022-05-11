@@ -117,6 +117,9 @@ static void sb_apmc_smi_handler(void)
 	case APM_CNT_SMMINFO:
 		psp_notify_smm();
 		break;
+	case APM_CNT_PSPSMI:
+		psp_enable_smi();
+		break;
 	}
 
 	mainboard_smi_apmc(cmd);

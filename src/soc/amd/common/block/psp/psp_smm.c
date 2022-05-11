@@ -61,11 +61,6 @@ int psp_notify_smm(void)
 	soc_fill_smm_reg_info(&buffer.req.smm_reg_info);
 #endif
 
-#if (CONFIG(SOC_AMD_COMMON_BLOCK_PSP_SMI))
-	configure_psp_smi();
-	enable_psp_smi(p2c_buffer.buffer);
-#endif
-
 	printk(BIOS_DEBUG, "PSP: Notify SMM info... ");
 
 	set_smm_flag();
@@ -104,4 +99,10 @@ void psp_notify_sx_info(u8 sleep_type)
 
 	/* buffer's status shouldn't change but report it if it does */
 	psp_print_cmd_status(cmd_status, &buffer->header);
+}
+
+void psp_enable_smi(void)
+{
+	configure_psp_smi();
+	enable_psp_smi(p2c_buffer.buffer);
 }

@@ -12,7 +12,7 @@ void do_cold_reset(void);
 
 static inline __noreturn void warm_reset(void)
 {
-	printk(BIOS_INFO, "%s() called!\n", __func__);
+	printk(BIOS_NOTICE, "%s() called!\n", __func__);
 	dcache_clean_all();
 	do_warm_reset();
 	halt();
@@ -20,7 +20,7 @@ static inline __noreturn void warm_reset(void)
 
 static inline __noreturn void cold_reset(void)
 {
-	printk(BIOS_INFO, "%s() called!\n", __func__);
+	printk(BIOS_NOTICE, "%s() called!\n", __func__);
 	dcache_clean_all();
 	do_cold_reset();
 	halt();

@@ -69,6 +69,12 @@ void wait_for_aoac_enabled(unsigned int dev)
 		udelay(100);
 }
 
+void wait_for_aoac_disabled(unsigned int dev)
+{
+	while (is_aoac_device_enabled(dev))
+		udelay(100);
+}
+
 void enable_aoac_devices(void)
 {
 	unsigned int i;

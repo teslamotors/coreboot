@@ -56,6 +56,7 @@ ramstage-y += i2c.c
 ramstage-y += chip.c
 ramstage-y += cpu.c
 ramstage-y += data_fabric.c
+ramstage-$(CONFIG_PSP_PERSISTENT_MEM_AS_RAM_OOPS) += psp_ramoops.c
 ramstage-y += root_complex.c
 ramstage-y += mca.c
 ramstage-$(CONFIG_HAVE_ACPI_TABLES) += acpi.c
@@ -76,6 +77,7 @@ ramstage-y += tsc_freq.c
 ramstage-y += finalize.c
 ramstage-y += soc_util.c
 ramstage-y += psp.c
+ramstage-y += cc6.c
 ramstage-$(CONFIG_PSP_PLATFORM_SECURE_BOOT) += psb.c
 ramstage-$(CONFIG_PSP_RPMC_ROOT_KEY_PROVISIONING) += rpmc.c
 ramstage-y += fsp_params.c
@@ -98,6 +100,10 @@ smm-y += gpio.c
 smm-y += psp.c
 smm-y += smu.c
 smm-y += config.c
+
+verstage-$(CONFIG_VBOOT_VERIFY_RW_ON_LOAD) += vboot.c
+romstage-$(CONFIG_VBOOT_VERIFY_RW_ON_LOAD) += vboot.c
+ramstage-$(CONFIG_VBOOT_VERIFY_RW_ON_LOAD) += vboot.c
 
 CPPFLAGS_common += -I$(src)/soc/amd/picasso
 CPPFLAGS_common += -I$(src)/soc/amd/picasso/include
@@ -225,6 +231,16 @@ ifeq ($(CONFIG_PSP_PLATFORM_SECURE_BOOT),y)
 PSP_SPL_TABLE_FILE=$(FIRMWARE_LOCATE)/spl_table.sbin
 endif
 
+ifneq ($(CONFIG_PSP_OEM_TRUSTLETS_FILE),)
+# type = 0x80
+PSP_OEM_TRUSTLETS_FILE=$(realpath $(call strip_quotes, $(CONFIG_PSP_OEM_TRUSTLETS_FILE)))
+endif
+
+ifeq ($(CONFIG_PSP_OEM_TRUSTLETKEY),y)
+# type = 0x81
+PSP_OEM_TRUSTLETKEY_FILE=$(FIRMWARE_LOCATE)/TASigningKey.bin
+endif
+
 #
 # BIOS Directory Table items - proper ordering is managed by amdfwtool
 #
@@ -314,6 +330,8 @@ OPT_TOKEN_UNLOCK=$(call add_opt_prefix, $(PSP_TOKEN_UNLOCK), "")
 OPT_PSP_SOFTFUSE=$(call add_opt_prefix, $(PSP_SOFTFUSE), --soft-fuse)
 OPT_PSPSECUREOS_FILE=$(call add_opt_prefix, $(PSPSECUREOS_FILE), --secureos)
 OPT_PSP_TRUSTLETS_FILE=$(call add_opt_prefix, $(PSP_TRUSTLETS_FILE), --trustlets)
+OPT_PSP_OEM_TRUSTLETS_FILE=$(call add_opt_prefix, $(PSP_OEM_TRUSTLETS_FILE), --oem-trustlets)
+OPT_PSP_OEM_TRUSTLETKEY_FILE=$(call add_opt_prefix, $(PSP_OEM_TRUSTLETKEY_FILE), --oem-trustletkey)
 OPT_PSP_NVRAM_BASE=$(call add_opt_prefix, $(PSP_NVRAM_BASE), --nvram-base)
 OPT_PSP_NVRAM_SIZE=$(call add_opt_prefix, $(PSP_NVRAM_SIZE), --nvram-size)
 OPT_PSP_RPMC_NVRAM_BASE=$(call add_opt_prefix, $(PSP_RPMC_NVRAM_BASE), --rpmc-nvram-base)
@@ -380,6 +398,8 @@ endif
 AMDFW_COMMON_ARGS=$(OPT_AMD_PUBKEY_FILE) \
 		$(OPT_PSPSECUREOS_FILE) \
 		$(OPT_PSP_TRUSTLETS_FILE) \
+		$(OPT_PSP_OEM_TRUSTLETS_FILE) \
+		$(OPT_PSP_OEM_TRUSTLETKEY_FILE) \
 		$(OPT_PSP_NVRAM_BASE) \
 		$(OPT_PSP_NVRAM_SIZE) \
 		$(OPT_PSP_RPMC_NVRAM_BASE) \
@@ -443,6 +463,8 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(CONFIG_AMD_PUBKEY_FILE)) \
 			$(call strip_quotes, $(PSPBTLDR_FILE)) \
 			$(call strip_quotes, $(PSPSECUREOS_FILE)) \
 			$(call strip_quotes, $(PSP_TRUSTLETS_FILE)) \
+			$(call strip_quotes, $(PSP_OEM_TRUSTLETS_FILE)) \
+			$(call strip_quotes, $(PSP_OEM_TRUSTLETKEY_FILE)) \
 			$(call strip_quotes, $(PSP_SEC_DBG_KEY_FILE)) \
 			$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 			$(call strip_quotes, $(PSP_BIOS_PUBKEY_FILE)) \

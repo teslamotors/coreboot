@@ -156,6 +156,32 @@ void infoz_disable_dgpu_devs(void)
 		dgpu_dev->enabled = 0;
 }
 
+/* Update gpio pins for dgpu based on variant. */
+void infoz_dgpu_update_gpio(void)
+{
+	struct device *dgpu_dev;
+	struct drivers_amd_dgpu_config *dgpu_cfg;
+	int flags;
+
+	flags = variant_get_flags();
+
+	if (!(flags & INFOZ_HAS_DGPU))
+		return;
+
+	dgpu_dev = infoz_find_dgpu_dev();
+	if (!dgpu_dev)
+		return;
+
+	dgpu_cfg = (struct drivers_amd_dgpu_config *) config_of(dgpu_dev);
+
+	/* Check for older hardware rev with dgpu power gpio pin 108. */
+	if (flags & INFOZ_HAS_DGPU_PWREN_GPIO_108)
+	{
+		dgpu_cfg->enable_gpio.pin_count = 1;
+		dgpu_cfg->enable_gpio.pins[0] = GPIO_108;
+	}
+}
+
 #define INFOZ_OLD_REAR_TOUCH_RESET_GPIO	144
 #define INFOZ_LINUX_GPIO_BASE		256
 
@@ -195,6 +221,9 @@ void infoz_common_devtree_update(void)
 				    INFOZ_OLD_REAR_TOUCH_RESET_GPIO +
 				    INFOZ_LINUX_GPIO_BASE);
 	}
+
+	/* Update gpio pins for dgpu based on variant. */
+	infoz_dgpu_update_gpio();
 
 	/*
 	 * dGPU should be powered at this point.  If power isn't up,

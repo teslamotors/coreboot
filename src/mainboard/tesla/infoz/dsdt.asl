@@ -39,6 +39,8 @@ DefinitionBlock (
 
 		/* Per board variant specific definitions. */
 		#include <variant/acpi/display.asl>
+
+		#include <acpi/led.asl>
 	} /* End \_SB scope */
 }
 /* End of ASL file */

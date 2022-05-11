@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+chip soc/amd/picasso
+
+	# Start : OPN Performance Configuration
+	# See devhub #55593 Chapter 3.2 for documentation
+	# For the below fields, 0 indicates use SOC default
+
+	# System config index (54W)
+	register "system_config" = "9"
+
+	# Set STAPM confiuration. All of these fields must be set >0 to take affect
+	register "slow_ppt_limit" = "54000" #mw
+	register "fast_ppt_limit" = "64800" #mw
+	register "slow_ppt_time_constant" = "0" #second
+	register "stapm_time_constant" = "0" #second
+	register "sustained_power_limit" = "0" #mw
+
+	register "telemetry_vddcr_vdd_slope" = "132000" #mA
+	register "telemetry_vddcr_vdd_offset" = "0"
+	register "telemetry_vddcr_soc_slope" = "25000" #mA
+	register "telemetry_vddcr_soc_offset" = "0"
+
+	# End : OPN Performance Configuration
+
+	device domain 0 on
+		subsystemid 0x1022 0x1510 inherit
+	end # domain
+
+	device mmio 0xfedc5000 on
+		chip drivers/i2c/generic
+			register "hid" = ""DS90UH949""
+			register "cid" = ""DS90UH949""
+			register "desc" = ""Center Display Serializer""
+			register "uid" = "8001"
+			register "has_power_resource" = "1"
+			register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(68)"
+			register "enable_delay_ms" = "100"
+
+			register "reg_init_count" = "4"
+
+			# GPIO0 as output with remote value
+			register "reg_init_list[0].size" = "1"
+			register "reg_init_list[0].reg" = "0x0d"
+			register "reg_init_list[0].val" = "0x25"
+
+			# GPIO3 as input for XRES
+			register "reg_init_list[1].size" = "1"
+			register "reg_init_list[1].reg" = "0x0f"
+			register "reg_init_list[1].val" = "0x03"
+
+			# GPIO2 as input for backlight PWM
+			register "reg_init_list[2].size" = "1"
+			register "reg_init_list[2].reg" = "0x0e"
+			register "reg_init_list[2].val" = "0x30"
+
+			# Enable I2C passthrough for all devs
+			register "reg_init_list[3].size" = "1"
+			register "reg_init_list[3].reg" = "0x17"
+			register "reg_init_list[3].val" = "0x9e"
+
+			device i2c 18 omit_early end
+		end
+
+		chip drivers/i2c/generic
+			register "hid" = ""DS90UB948""
+			register "cid" = ""DS90UB948""
+			register "desc" = ""Center Display Deserializer""
+			register "uid" = "1"
+
+			register "reg_init_count" = "11"
+
+			# Set error count to max
+			register "reg_init_list[0].size" = "1"
+			register "reg_init_list[0].reg" = "0x41"
+			register "reg_init_list[0].val" = "0x1f"
+
+			# Set output mode
+			register "reg_init_list[1].size" = "1"
+			register "reg_init_list[1].reg" = "0x49"
+			register "reg_init_list[1].val" = "0xe0"
+
+			# Speed up I2C to 400 kHz (high/low time regs)
+			register "reg_init_list[2].size" = "1"
+			register "reg_init_list[2].reg" = "0x26"
+			register "reg_init_list[2].val" = "0x0e"
+			register "reg_init_list[3].size" = "1"
+			register "reg_init_list[3].reg" = "0x27"
+			register "reg_init_list[3].val" = "0x0e"
+
+			# Disable self-test
+			register "reg_init_list[4].size" = "1"
+			register "reg_init_list[4].reg" = "0x24"
+			register "reg_init_list[4].val" = "0x00"
+
+			# GPIO configuration (PORTSEL0)
+			register "reg_init_list[5].size" = "1"
+			register "reg_init_list[5].reg" = "0x34"
+			register "reg_init_list[5].val" = "0x01"
+
+			# GPIO0 touch interrupt
+			register "reg_init_list[6].size" = "1"
+			register "reg_init_list[6].reg" = "0x1d"
+			register "reg_init_list[6].val" = "0x03"
+
+			# DGPIO1_2_CONFIG - Force backlight on
+			register "reg_init_list[7].size" = "1"
+			register "reg_init_list[7].reg" = "0x1e"
+			register "reg_init_list[7].val" = "0x90"
+
+			# DGPIO_3_CONFIG
+			register "reg_init_list[8].size" = "1"
+			register "reg_init_list[8].reg" = "0x1f"
+			register "reg_init_list[8].val" = "0x05"
+
+			# GPIO_5_6_CONFIG
+			register "reg_init_list[9].size" = "1"
+			register "reg_init_list[9].reg" = "0x20"
+			register "reg_init_list[9].val" = "0x09"
+
+			# GPIO_7_8_CONFIG (CONFIRM DISP config)
+			register "reg_init_list[10].size" = "1"
+			register "reg_init_list[10].reg" = "0x21"
+			register "reg_init_list[10].val" = "0x91"
+
+			device i2c 2c omit_early end
+		end
+
+	end
+
+end	# chip soc/amd/picasso
